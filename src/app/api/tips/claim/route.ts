@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Connection, PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import { Keypair } from '@solana/web3.js';
 import connectDB from '@/lib/mongodb';
-import User from '@/models/User';
+import User, { IPendingClaim } from '@/models/User';
 import { decryptPrivateKey } from '@/lib/crypto';
 
 const connection = new Connection(process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://api.devnet.solana.com');
@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Find the pending claim
-    const pendingClaim = user.pendingClaims.find(claim => claim._id?.toString() === tipId);
+    const pendingClaim = user.pendingClaims.find((claim: IPendingClaim) => claim._id?.toString() === tipId);
     if (!pendingClaim) {
       return NextResponse.json(
         { error: 'Pending claim not found' },
@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Remove from pending claims
-    user.pendingClaims = user.pendingClaims.filter(claim => claim._id?.toString() !== tipId);
+    user.pendingClaims = user.pendingClaims.filter((claim: IPendingClaim) => claim._id?.toString() !== tipId);
 
     await user.save();
 

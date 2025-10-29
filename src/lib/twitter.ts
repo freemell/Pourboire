@@ -1,13 +1,26 @@
 import { TwitterApi } from 'twitter-api-v2';
 
-const client = new TwitterApi({
-  appKey: process.env.TWITTER_API_KEY!,
-  appSecret: process.env.TWITTER_API_SECRET!,
-  accessToken: process.env.TWITTER_ACCESS_TOKEN,
-  accessSecret: process.env.TWITTER_ACCESS_SECRET,
-});
+let client: TwitterApi | null = null;
+let bearerClient: any = null;
 
-const bearerClient = client.readOnly;
+function getTwitterClient() {
+  if (!client) {
+    if (!process.env.TWITTER_API_KEY || !process.env.TWITTER_API_SECRET) {
+      throw new Error('Twitter API credentials not configured');
+    }
+    
+    client = new TwitterApi({
+      appKey: process.env.TWITTER_API_KEY,
+      appSecret: process.env.TWITTER_API_SECRET,
+      accessToken: process.env.TWITTER_ACCESS_TOKEN,
+      accessSecret: process.env.TWITTER_ACCESS_SECRET,
+    });
+    
+    bearerClient = client.readOnly;
+  }
+  
+  return { client, bearerClient };
+}
 
 export interface TwitterUser {
   id: string;
@@ -24,6 +37,8 @@ export interface TwitterUser {
 
 export async function getUserByHandle(handle: string): Promise<TwitterUser | null> {
   try {
+    const { bearerClient } = getTwitterClient();
+    
     // Remove @ symbol if present
     const cleanHandle = handle.replace('@', '');
     
@@ -44,6 +59,8 @@ export async function getUserByHandle(handle: string): Promise<TwitterUser | nul
 
 export async function getUserProfile(userId: string): Promise<TwitterUser | null> {
   try {
+    const { bearerClient } = getTwitterClient();
+    
     const user = await bearerClient.v2.user(userId, {
       'user.fields': ['id', 'username', 'name', 'profile_image_url', 'description', 'public_metrics']
     });
@@ -61,6 +78,8 @@ export async function getUserProfile(userId: string): Promise<TwitterUser | null
 
 export async function postTweet(text: string): Promise<string | null> {
   try {
+    const { client } = getTwitterClient();
+    
     const tweet = await client.v2.tweet(text);
     return tweet.data.id;
   } catch (error) {
@@ -71,6 +90,8 @@ export async function postTweet(text: string): Promise<string | null> {
 
 export async function searchMentions(query: string, sinceId?: string): Promise<any[]> {
   try {
+    const { bearerClient } = getTwitterClient();
+    
     const tweets = await bearerClient.v2.search(query, {
       'tweet.fields': ['id', 'text', 'author_id', 'created_at', 'public_metrics'],
       'user.fields': ['id', 'username', 'name'],

@@ -10,6 +10,7 @@ export interface ITransaction {
 }
 
 export interface IPendingClaim {
+  _id?: string;
   amount: number;
   token: string;
   fromTx: string;

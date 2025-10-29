@@ -123,7 +123,7 @@ export default function Dashboard() {
   useEffect(() => {
     if (user) {
       // Extract Twitter data from Privy user (if available)
-      const twitterAccount = user.linkedAccounts.find(account => account.type === 'twitter');
+      const twitterAccount = user.linkedAccounts.find(account => account.type === 'twitter_oauth');
       const emailAccount = user.linkedAccounts.find(account => account.type === 'email');
       
       if (twitterAccount) {
@@ -132,7 +132,7 @@ export default function Dashboard() {
           handle: `@${twitterAccount.username}`,
           name: twitterAccount.name,
           profileImage: twitterAccount.profilePictureUrl,
-          bio: twitterAccount.description || '',
+          bio: '',
           walletAddress: user.wallet?.address || '',
           isEmbedded: true
         });
