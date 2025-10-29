@@ -421,10 +421,10 @@ export default function SimplePhoneTutorial() {
       <div className="max-w-7xl mx-auto px-6 md:px-10 lg:px-16">
         <div className="text-center mb-16">
           <h2 ref={titleRef} className="text-4xl md:text-5xl font-extralight text-white mb-6">
-            Interactive Tutorial
+            Tutorial
           </h2>
           <p ref={descriptionRef} className="text-lg text-white/75 max-w-2xl mx-auto">
-            See how easy it is to send tips on X with our interactive phone demo
+            Learn how to send tips on X in seconds
           </p>
         </div>
 
