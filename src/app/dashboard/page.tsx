@@ -219,7 +219,7 @@ export default function Dashboard() {
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <h1 className="text-3xl font-extralight tracking-tight">SolTip Dashboard</h1>
+                    <h1 className="text-3xl font-extralight tracking-tight">Pourboire Dashboard</h1>
               <span className="px-3 py-1 bg-green-500/20 text-green-400 rounded-full text-xs font-light">
                 Live
               </span>

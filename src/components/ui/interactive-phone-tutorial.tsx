@@ -20,7 +20,7 @@ interface TutorialStep {
 const tutorialSteps: TutorialStep[] = [
   {
     id: 'welcome',
-    title: 'Welcome to SolTip',
+    title: 'Welcome to Pourboire',
     description: 'Send instant SOL tips to anyone on X with just a mention',
     action: 'Tap to continue',
     duration: 3000
@@ -41,8 +41,8 @@ const tutorialSteps: TutorialStep[] = [
   },
   {
     id: 'type-command',
-    title: 'Type @SolTip Command',
-    description: 'Type "@SolTip tip 0.5 SOL" to send a tip',
+    title: 'Type @Pourboire Command',
+    description: 'Type "@Pourboire tip 0.5 SOL" to send a tip',
     action: 'Type the command',
     highlight: 'text-input'
   },
@@ -261,10 +261,10 @@ export default function InteractivePhoneTutorial() {
       <div className="max-w-7xl mx-auto px-6 md:px-10 lg:px-16">
         <div className="text-center mb-16">
           <h2 ref={titleRef} className="text-4xl md:text-5xl font-extralight text-white mb-6">
-            Interactive Tutorial
+            Tutorial
           </h2>
           <p ref={descriptionRef} className="text-lg text-white/75 max-w-2xl mx-auto">
-            See how easy it is to send tips on X with our interactive 3D phone demo
+            Learn how to send tips on X in seconds
           </p>
         </div>
 

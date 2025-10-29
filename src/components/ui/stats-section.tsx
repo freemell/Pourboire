@@ -109,7 +109,7 @@ export default function StatsSection() {
       <div className="max-w-7xl mx-auto px-6 md:px-10 lg:px-16">
         <div className="text-center mb-16">
           <h2 ref={titleRef} className="text-4xl md:text-5xl font-extralight text-white mb-6">
-            SolTip by the numbers
+            Pourboire by the numbers
           </h2>
           <p className="text-lg text-white/75 max-w-2xl mx-auto">
             Join thousands of users already tipping on X with Solana

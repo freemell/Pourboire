@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "SolTip - Tip anyone on X with Solana",
-  description: "Send instant SOL/USDC tips to any X post with @SolTip. Zero fees, instant payments, and auto-pay features powered by x402.",
+  title: "Pourboire - Tip anyone on X with Solana",
+  description: "Send instant SOL/USDC tips to any X post with @Pourboire. Zero fees, instant payments, and auto-pay features powered by x402.",
 };
 
 export default function RootLayout({

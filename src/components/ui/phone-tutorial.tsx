@@ -61,7 +61,7 @@ function PhoneModel() {
           <div className="flex-1 space-y-3">
             <div className="bg-gray-800 rounded-lg p-3">
               <div className="text-xs text-gray-400 mb-1">Reply to @username</div>
-              <div className="text-sm">@SolTip tip 0.5 SOL</div>
+              <div className="text-sm">@Pourboire tip 0.5 SOL</div>
             </div>
             
             <div className="bg-green-900/30 border border-green-500/30 rounded-lg p-3">
@@ -71,7 +71,7 @@ function PhoneModel() {
             
             <div className="bg-gray-800 rounded-lg p-3">
               <div className="text-xs text-gray-400 mb-1">Auto-pay rule</div>
-              <div className="text-sm">#SolTipPay if following</div>
+              <div className="text-sm">#PourboirePay if following</div>
             </div>
           </div>
           
@@ -166,7 +166,7 @@ export default function PhoneTutorial() {
             How it works
           </h2>
           <p ref={descriptionRef} className="text-lg text-white/75 max-w-2xl mx-auto">
-            Simply reply to any X post with @SolTip and the amount. Our bot handles the rest automatically.
+            Simply reply to any X post with @Pourboire and the amount. Our bot handles the rest automatically.
           </p>
         </div>
 
@@ -188,7 +188,7 @@ export default function PhoneTutorial() {
           {/* Floating labels */}
           <div className="absolute top-1/4 left-4 md:left-8 text-white">
             <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 max-w-xs">
-              <div className="text-sm font-medium">1. Reply with @SolTip</div>
+              <div className="text-sm font-medium">1. Reply with @Pourboire</div>
               <div className="text-xs text-white/70 mt-1">Mention our bot with amount</div>
             </div>
           </div>

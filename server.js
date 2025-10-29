@@ -157,7 +157,7 @@ async function sendSOL(fromPrivateKey, toAddress, amount) {
 
 // Parse tip command from tweet text
 function parseTipCommand(text) {
-  const tipRegex = /@SolTip\s+tip\s+(\d+(?:\.\d+)?)\s*(SOL|USDC)?/i;
+  const tipRegex = /@Pourboire\s+tip\s+(\d+(?:\.\d+)?)\s*(SOL|USDC)?/i;
   const match = text.match(tipRegex);
   
   if (match) {
@@ -172,13 +172,13 @@ function parseTipCommand(text) {
 
 // Parse auto-pay command
 function parseAutoPayCommand(text) {
-  const autoPayRegex = /#SolTipPay/i;
+  const autoPayRegex = /#PourboirePay/i;
   return autoPayRegex.test(text);
 }
 
 // Parse giveaway command
 function parseGiveawayCommand(text) {
-  const giveawayRegex = /@SolTip\s+pick\s+(random|first|highest)\s+(\d+)\s+replies?\s+and\s+tip\s+(\d+(?:\.\d+)?)\s*(SOL|USDC)?/i;
+  const giveawayRegex = /@Pourboire\s+pick\s+(random|first|highest)\s+(\d+)\s+replies?\s+and\s+tip\s+(\d+(?:\.\d+)?)\s*(SOL|USDC)?/i;
   const match = text.match(giveawayRegex);
   
   if (match) {
@@ -380,7 +380,7 @@ async function monitorMentions() {
     console.log('Monitoring Twitter mentions...');
     
     const mentions = await twitterClient.v2.search({
-      query: '@SolTip -is:retweet',
+      query: '@Pourboire -is:retweet',
       max_results: 10,
       'tweet.fields': ['author_id', 'conversation_id', 'text', 'created_at'],
       'user.fields': ['username']
@@ -403,7 +403,7 @@ async function monitorMentions() {
           const recipientMatch = tweet.text.match(/@(\w+)/g);
           if (recipientMatch && recipientMatch.length > 1) {
             const recipientHandle = recipientMatch[1].replace('@', '');
-            if (recipientHandle !== 'SolTip') {
+            if (recipientHandle !== 'Pourboire') {
               await processTipCommand(tweet, authorHandle, recipientHandle);
             }
           }
@@ -494,7 +494,7 @@ app.post('/api/auto-pay', async (req, res) => {
 cron.schedule('*/2 * * * *', monitorMentions); // Every 2 minutes
 
 app.listen(PORT, () => {
-  console.log(`SolTip server running on port ${PORT}`);
+  console.log(`Pourboire server running on port ${PORT}`);
   console.log(`Monitoring Twitter mentions every 2 minutes...`);
 });
 

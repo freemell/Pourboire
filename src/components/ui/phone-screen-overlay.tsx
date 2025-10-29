@@ -44,7 +44,7 @@ export default function PhoneScreenOverlay({ currentStep, isVisible }: PhoneScre
             <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <span className="text-2xl">💎</span>
             </div>
-            <h3 className="text-lg font-semibold text-white mb-2">SolTip</h3>
+            <h3 className="text-lg font-semibold text-white mb-2">Pourboire</h3>
             <p className="text-white/70 text-sm">Tap to start tutorial</p>
           </div>
         );
@@ -131,7 +131,7 @@ export default function PhoneScreenOverlay({ currentStep, isVisible }: PhoneScre
             </div>
             
             <div className="bg-gradient-to-r from-blue-500/20 to-cyan-500/20 rounded-lg p-3 border border-blue-500/30">
-              <div className="text-blue-300 text-xs font-mono">@SolTip tip 0.5 SOL</div>
+              <div className="text-blue-300 text-xs font-mono">@Pourboire tip 0.5 SOL</div>
             </div>
           </div>
         );
@@ -158,7 +158,7 @@ export default function PhoneScreenOverlay({ currentStep, isVisible }: PhoneScre
             </div>
             
             <div className="bg-gradient-to-r from-blue-500/20 to-cyan-500/20 rounded-lg p-3 border border-blue-500/30 mb-3">
-              <div className="text-blue-300 text-xs font-mono">@SolTip tip 0.5 SOL</div>
+              <div className="text-blue-300 text-xs font-mono">@Pourboire tip 0.5 SOL</div>
             </div>
             
             <div className="flex justify-end">

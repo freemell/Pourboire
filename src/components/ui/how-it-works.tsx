@@ -13,8 +13,8 @@ const steps = [
   },
   {
     number: '02',
-    title: 'Reply with @SolTip',
-    description: 'Simply reply to any X post with "@SolTip tip 0.5 SOL" or similar command.',
+    title: 'Reply with @Pourboire',
+    description: 'Simply reply to any X post with "@Pourboire tip 0.5 SOL" or similar command.',
     icon: '💬'
   },
   {

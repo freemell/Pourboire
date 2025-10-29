@@ -8,7 +8,7 @@ const features = [
   {
     icon: '⚡',
     title: 'Instant Tips',
-    description: 'Send SOL or USDC to any X post instantly with a simple @SolTip mention.',
+    description: 'Send SOL or USDC to any X post instantly with a simple @Pourboire mention.',
     color: 'from-yellow-500 to-orange-500'
   },
   {

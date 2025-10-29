@@ -48,12 +48,12 @@ export default function PhoneAppInterface({ currentStep, isVisible }: PhoneAppIn
         </div>
       </div>
 
-      {/* SolTip Header */}
+      {/* Pourboire Header */}
       <div className="text-center py-6 px-4">
         <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
           <span className="text-2xl">💎</span>
         </div>
-        <h1 className="text-2xl font-bold mb-2">SolTip</h1>
+        <h1 className="text-2xl font-bold mb-2">Pourboire</h1>
         <p className="text-blue-300 text-sm">Tip anyone on X with Solana</p>
       </div>
 
@@ -128,7 +128,7 @@ export default function PhoneAppInterface({ currentStep, isVisible }: PhoneAppIn
             <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-2xl flex items-center justify-center mb-4">
               <span className="text-2xl">💎</span>
             </div>
-            <h2 className="text-xl font-bold mb-3">Welcome to SolTip</h2>
+            <h2 className="text-xl font-bold mb-3">Welcome to Pourboire</h2>
             <p className="text-blue-300 mb-4 leading-relaxed text-sm">
               Send instant SOL tips to anyone on X with just a mention.
             </p>
@@ -272,7 +272,7 @@ export default function PhoneAppInterface({ currentStep, isVisible }: PhoneAppIn
               </div>
               
               <div className="bg-gradient-to-r from-blue-500/20 to-cyan-500/20 rounded-xl p-4 border border-blue-500/30">
-                <div className="text-blue-300 text-sm font-mono">@SolTip tip 0.5 SOL</div>
+                <div className="text-blue-300 text-sm font-mono">@Pourboire tip 0.5 SOL</div>
               </div>
               
               <div className="flex justify-between items-center mt-4">
@@ -315,7 +315,7 @@ export default function PhoneAppInterface({ currentStep, isVisible }: PhoneAppIn
               </div>
               
               <div className="bg-gradient-to-r from-blue-500/20 to-cyan-500/20 rounded-xl p-4 border border-blue-500/30 mb-4">
-                <div className="text-blue-300 text-sm font-mono">@SolTip tip 0.5 SOL</div>
+                <div className="text-blue-300 text-sm font-mono">@Pourboire tip 0.5 SOL</div>
               </div>
               
               <div className="flex justify-between items-center">
@@ -381,7 +381,7 @@ export default function PhoneAppInterface({ currentStep, isVisible }: PhoneAppIn
         return (
           <div className="h-full bg-gradient-to-b from-blue-900 to-black text-white overflow-y-auto">
             <div className="p-4">
-              <h2 className="text-xl font-bold mb-6 text-center">SolTip Features</h2>
+              <h2 className="text-xl font-bold mb-6 text-center">Pourboire Features</h2>
               
               <div className="space-y-4">
                 <div className="bg-white/10 rounded-xl p-4">
@@ -479,8 +479,8 @@ export default function PhoneAppInterface({ currentStep, isVisible }: PhoneAppIn
                   <div className="w-16 h-16 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4">
                     <span className="text-2xl font-bold">02</span>
                   </div>
-                  <h3 className="text-lg font-semibold mb-2">Reply with @SolTip</h3>
-                  <p className="text-white/70 text-sm">Type "@SolTip tip 0.5 SOL" in any X post</p>
+                  <h3 className="text-lg font-semibold mb-2">Reply with @Pourboire</h3>
+                  <p className="text-white/70 text-sm">Type "@Pourboire tip 0.5 SOL" in any X post</p>
                 </div>
                 
                 <div className="text-center">

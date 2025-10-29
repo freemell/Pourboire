@@ -17,7 +17,7 @@ interface TutorialStep {
 const tutorialSteps: TutorialStep[] = [
   {
     id: 'welcome',
-    title: 'Welcome to SolTip',
+    title: 'Welcome to Pourboire',
     description: 'Send instant SOL tips to anyone on X with just a mention',
     action: 'Tap to continue',
     duration: 3000
@@ -38,8 +38,8 @@ const tutorialSteps: TutorialStep[] = [
   },
   {
     id: 'type-command',
-    title: 'Type @SolTip Command',
-    description: 'Type "@SolTip tip 0.5 SOL" to send a tip',
+    title: 'Type @Pourboire Command',
+    description: 'Type "@Pourboire tip 0.5 SOL" to send a tip',
     action: 'Type the command',
     highlight: 'text-input'
   },

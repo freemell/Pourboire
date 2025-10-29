@@ -16,7 +16,7 @@ interface TutorialStep {
 const tutorialSteps: TutorialStep[] = [
   {
     id: 'welcome',
-    title: 'Welcome to SolTip',
+    title: 'Welcome to Pourboire',
     description: 'Send instant SOL tips to anyone on X with just a mention',
     action: 'Tap to continue',
     duration: 3000
@@ -37,8 +37,8 @@ const tutorialSteps: TutorialStep[] = [
   },
   {
     id: 'type-command',
-    title: 'Type @SolTip Command',
-    description: 'Type "@SolTip tip 0.5 SOL" to send a tip',
+    title: 'Type @Pourboire Command',
+    description: 'Type "@Pourboire tip 0.5 SOL" to send a tip',
     action: 'Type the command',
     highlight: 'text-input'
   },
@@ -172,7 +172,7 @@ export default function SimplePhoneTutorial() {
             <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-2xl flex items-center justify-center mb-4">
               <span className="text-2xl">💎</span>
             </div>
-            <h2 className="text-xl font-bold mb-3">Welcome to SolTip</h2>
+            <h2 className="text-xl font-bold mb-3">Welcome to Pourboire</h2>
             <p className="text-blue-300 mb-4 leading-relaxed text-sm">
               Send instant SOL tips to anyone on X with just a mention.
             </p>
@@ -296,7 +296,7 @@ export default function SimplePhoneTutorial() {
                     className="flex-grow bg-transparent text-white placeholder-gray-500 focus:outline-none resize-none text-xs"
                     placeholder="Post your reply"
                     rows={4}
-                    value="@username Just posted something amazing! 🚀 @SolTip tip 0.5 SOL"
+                    value="@username Just posted something amazing! 🚀 @Pourboire tip 0.5 SOL"
                     readOnly
                   ></textarea>
                 </div>
@@ -332,7 +332,7 @@ export default function SimplePhoneTutorial() {
                     className="flex-grow bg-transparent text-white placeholder-gray-500 focus:outline-none resize-none text-xs"
                     placeholder="Post your reply"
                     rows={4}
-                    value="@username Just posted something amazing! 🚀 @SolTip tip 0.5 SOL"
+                    value="@username Just posted something amazing! 🚀 @Pourboire tip 0.5 SOL"
                     readOnly
                   ></textarea>
                 </div>
@@ -391,7 +391,7 @@ export default function SimplePhoneTutorial() {
             <div className="space-y-3">
               {[
                 { step: '01', title: 'Connect Wallet', desc: 'Link your Solana wallet' },
-                { step: '02', title: 'Reply with @SolTip', desc: 'Use simple commands' },
+                { step: '02', title: 'Reply with @Pourboire', desc: 'Use simple commands' },
                 { step: '03', title: 'Instant Payment', desc: 'Bot processes instantly' },
                 { step: '04', title: 'Set Auto-Pay', desc: 'Configure automatic rules' }
               ].map((step, index) => (

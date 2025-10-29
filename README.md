@@ -1,11 +1,11 @@
-# SolTip - Tip anyone on X with Solana
+# Pourboire - Tip anyone on X with Solana
 
 A complete decentralized application (dApp) that enables instant tips and donations on X (Twitter) using Solana blockchain. Built with Next.js, TypeScript, and featuring a stunning neural network hero component.
 
 ## 🚀 Features
 
 ### Core Functionality
-- **Instant Tips**: Send SOL or USDC to any X post with a simple @SolTip mention
+- **Instant Tips**: Send SOL or USDC to any X post with a simple @Pourboire mention
 - **Auto-Pay Features**: Set up automatic tipping rules for followers, replies, or giveaways
 - **Zero Fees**: Only pay Solana network fees (~0.000005 SOL per transaction)
 - **x402 Integration**: Powered by x402 for instant micropayments and premium features
@@ -14,7 +14,7 @@ A complete decentralized application (dApp) that enables instant tips and donati
 
 ### Technical Features
 - **Neural Network Hero**: Beautiful animated background with custom CPPN shader
-- **3D Phone Tutorial**: Interactive 3D phone showing how to use SolTip
+- **3D Phone Tutorial**: Interactive 3D phone showing how to use Pourboire
 - **Real-time Dashboard**: Connect wallet, view transactions, manage auto-pay rules
 - **Responsive Design**: Works perfectly on all devices
 - **TypeScript**: Fully typed for better development experience
@@ -136,9 +136,9 @@ PORT=3001
 ### For Users
 
 1. **Connect Wallet**: Visit the dashboard and connect your Solana wallet
-2. **Send Tips**: Reply to any X post with `@SolTip tip 0.5 SOL`
+2. **Send Tips**: Reply to any X post with `@Pourboire tip 0.5 SOL`
 3. **Set Auto-Pay**: Configure automatic tipping rules in the dashboard
-4. **Run Giveaways**: Use `@SolTip pick random 5 replies and tip 0.1 SOL`
+4. **Run Giveaways**: Use `@Pourboire pick random 5 replies and tip 0.1 SOL`
 
 ### For Developers
 
@@ -155,7 +155,7 @@ PORT=3001
 - **Responsive Design**: Adapts to all screen sizes
 
 ### 3D Phone Tutorial
-- **Interactive 3D Model**: Shows how to use SolTip on mobile
+- **Interactive 3D Model**: Shows how to use Pourboire on mobile
 - **Floating Labels**: Step-by-step instructions
 - **Smooth Animations**: GSAP-powered transitions
 
@@ -239,7 +239,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - **Documentation**: Check the docs folder
 - **Issues**: Open an issue on GitHub
 - **Discord**: Join our community server
-- **Twitter**: Follow @SolTip for updates
+- **Twitter**: Follow @Pourboire for updates
 
 ## 🎯 Roadmap
 
@@ -252,4 +252,4 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ---
 
-**Built with ❤️ by the SolTip team**
+**Built with ❤️ by the Pourboire team**
