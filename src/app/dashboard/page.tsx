@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { useWeb3Auth } from '@/components/providers/web3auth-provider';
+import { usePrivy } from '@privy-io/react-auth';
 import { Connection, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import dynamic from 'next/dynamic';
 
@@ -18,7 +18,7 @@ type HistoryItem = {
 };
 
 export default function Dashboard() {
-  const { isReady, publicAddress, login, logout, balance: embeddedBalance } = useWeb3Auth();
+  const { user, login, logout } = usePrivy();
   const [balance, setBalance] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'overview' | 'transactions' | 'auto-pay' | 'settings'>('overview');
@@ -31,35 +31,51 @@ export default function Dashboard() {
   // Client-side rendering check
   useEffect(() => { setIsClient(true); }, []);
 
-  // Fetch balance from Privy embedded wallet
+  // Fetch balance from embedded wallet
   useEffect(() => {
-    if (publicAddress) {
-      fetchWalletBalance(publicAddress);
-      fetchPendingAndHistory(publicAddress);
+    const addr = user?.wallet?.address;
+    if (addr) {
+      fetchWalletBalance(addr);
+      fetchPendingAndHistory(addr);
     } else {
       setBalance(0);
       setLoading(false);
       setPendingTips([]);
       setHistory([]);
     }
-  }, [publicAddress]);
+  }, [user?.wallet?.address]);
 
-  // Handle Privy user data
+  // Handle user profile from Privy linked accounts
   useEffect(() => {
-    if (publicAddress) {
-      setUserData({
-        id: publicAddress,
-        handle: publicAddress,
-        name: publicAddress.slice(0, 6),
-        profileImage: `https://api.dicebear.com/8.x/identicon/svg?seed=${publicAddress}`,
-        bio: 'Connected via Web3Auth',
-        walletAddress: publicAddress,
-        isEmbedded: true
-      });
+    if (user) {
+      const twitterAccount = user.linkedAccounts.find((a: any) => a.type === 'twitter_oauth');
+      const emailAccount = user.linkedAccounts.find((a: any) => a.type === 'email');
+      if (twitterAccount) {
+        setUserData({
+          id: user.id,
+          handle: `@${twitterAccount.username}`,
+          name: twitterAccount.name,
+          profileImage: twitterAccount.profilePictureUrl,
+          bio: '',
+          walletAddress: user.wallet?.address || '',
+          isEmbedded: true,
+        });
+      } else if (emailAccount) {
+        const name = emailAccount.address.split('@')[0];
+        setUserData({
+          id: user.id,
+          handle: emailAccount.address,
+          name,
+          profileImage: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=3B82F6&color=fff`,
+          bio: 'Connected via email',
+          walletAddress: user.wallet?.address || '',
+          isEmbedded: true,
+        });
+      }
     } else {
       setUserData(null);
     }
-  }, [publicAddress]);
+  }, [user]);
 
   // Fetch real wallet balance
   const fetchWalletBalance = async (walletAddress: string) => {
@@ -106,7 +122,7 @@ export default function Dashboard() {
       if (data.success) {
         setPendingTips(prev => prev.filter(t => (t.id || t._id) !== tipId));
         // refresh history after claim
-        if (publicAddress) fetchPendingAndHistory(publicAddress);
+        if (user?.wallet?.address) fetchPendingAndHistory(user.wallet.address);
       }
     } catch (e) {
       console.error('Claim failed', e);
@@ -170,7 +186,7 @@ export default function Dashboard() {
               )}
             </div>
             <div className="flex items-center space-x-4">
-              {publicAddress ? (
+              {user ? (
                 <div className="flex items-center space-x-4">
                   <div className="flex items-center space-x-2 text-green-400">
                     <span className="text-sm font-light">✓ X Connected</span>
@@ -184,7 +200,7 @@ export default function Dashboard() {
                 </div>
               ) : (
                 <button
-                  onClick={() => login('twitter')}
+                  onClick={() => login()}
                   className="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-xl transition-colors font-light tracking-tight"
                 >
                   Connect Account
@@ -196,7 +212,7 @@ export default function Dashboard() {
       </header>
 
       <div className="max-w-7xl mx-auto px-6 py-8">
-        {!publicAddress ? (
+        {!user ? (
           <div className="text-center py-16">
             <div className="w-24 h-24 mx-auto mb-6 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full flex items-center justify-center">
               <span className="text-3xl">🔗</span>
@@ -206,7 +222,7 @@ export default function Dashboard() {
               Connect your account to start sending and receiving tips. Twitter login preferred, but email works too.
             </p>
             <button
-              onClick={() => login('twitter')}
+              onClick={() => login()}
               className="bg-blue-500 hover:bg-blue-600 text-white py-3 px-8 rounded-xl transition-colors text-lg font-light tracking-tight"
             >
               Connect Account
@@ -233,8 +249,8 @@ export default function Dashboard() {
                   <div className="text-right">
                     <div className="text-xs font-light text-white/70 mb-1 tracking-tight">Tip Wallet Address</div>
                     <div className="font-mono text-sm font-light">
-                      {publicAddress ? 
-                        `${publicAddress.slice(0, 8)}...${publicAddress.slice(-8)}` : 
+                      {user?.wallet?.address ? 
+                        `${user.wallet.address.slice(0, 8)}...${user.wallet.address.slice(-8)}` : 
                         'Creating wallet...'
                       }
                     </div>
@@ -504,22 +520,22 @@ export default function Dashboard() {
                     <div className="flex items-center justify-between">
                       <div>
                         <div className="font-light">
-                          {publicAddress ? 'Account Connected' : 'Connect Account'}
+                          {user ? 'Account Connected' : 'Connect Account'}
                         </div>
                         <div className="text-sm text-white/70 font-light">
-                          {publicAddress ? 
+                          {user ? 
                             `Connected: ${userData?.handle} - Tip wallet auto-created` :
                             'Link your X account to get started'
                           }
                         </div>
                       </div>
-                      {publicAddress ? (
+                      {user ? (
                         <div className="flex items-center space-x-2 text-green-400">
                           <span className="text-sm">✓ Connected</span>
                         </div>
                       ) : (
                         <button 
-                          onClick={() => login('twitter')}
+                          onClick={() => login()}
                           className="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg transition-colors"
                         >
                           Connect

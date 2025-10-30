@@ -122,21 +122,34 @@ export default function Web3AuthProvider({ children }: { children: React.ReactNo
     if (!web3auth) return;
     let prov: IProvider | null = null;
     try {
-      if (typeof (web3auth as any).connect === 'function') {
-        prov = (await (web3auth as any).connect({
-          adapter: WALLET_ADAPTERS.OPENLOGIN,
+      // Prefer connectTo with explicit OpenLogin adapter if available
+      if (typeof (web3auth as any).connectTo === 'function') {
+        prov = (await (web3auth as any).connectTo('openlogin', {
           loginProvider,
         })) as IProvider;
+      } else if (typeof (web3auth as any).connect === 'function') {
+        prov = (await (web3auth as any).connect({ adapter: 'openlogin', loginProvider })) as IProvider;
       }
     } catch (e) {
-      // fallback to no-arg connect if adapter param unsupported
-      prov = (await (web3auth as any).connect()) as IProvider;
+      // fallback to no-arg connect for older SDKs
+      if (typeof (web3auth as any).connect === 'function') {
+        prov = (await (web3auth as any).connect()) as IProvider;
+      }
     }
     if (!prov) return;
+
     setProvider(prov);
-    const address = await getAddress(prov);
-    setPublicAddress(address);
-    await refreshBalance(prov, address);
+
+    // Request accounts explicitly to avoid post-login RPC race conditions
+    try {
+      const accounts = (await (prov as any).request?.({ method: 'solana_requestAccounts' })) as string[];
+      const address = accounts?.[0] || (await getAddress(prov));
+      if (!address) throw new Error('No Solana account returned');
+      setPublicAddress(address);
+      await refreshBalance(prov, address);
+    } catch (err) {
+      console.error('Post-login account fetch failed', err);
+    }
   }, [web3auth, getAddress, refreshBalance]);
 
   const logout = useCallback(async () => {
