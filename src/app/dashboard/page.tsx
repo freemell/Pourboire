@@ -48,14 +48,17 @@ export default function Dashboard() {
   // Handle user profile from Privy linked accounts
   useEffect(() => {
     if (user) {
-      const twitterAccount = user.linkedAccounts.find((a: any) => a.type === 'twitter_oauth');
-      const emailAccount = user.linkedAccounts.find((a: any) => a.type === 'email');
+      const twitterAccount = user.linkedAccounts.find((a: any) => a.type === 'twitter_oauth') as any;
+      const emailAccount = user.linkedAccounts.find((a: any) => a.type === 'email') as any;
       if (twitterAccount) {
+        const handle = twitterAccount?.username ? `@${twitterAccount.username}` : '';
+        const name = twitterAccount?.name || handle || 'User';
+        const profileImage = twitterAccount?.profilePictureUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=3B82F6&color=fff`;
         setUserData({
           id: user.id,
-          handle: `@${twitterAccount.username}`,
-          name: twitterAccount.name,
-          profileImage: twitterAccount.profilePictureUrl,
+          handle,
+          name,
+          profileImage,
           bio: '',
           walletAddress: user.wallet?.address || '',
           isEmbedded: true,
