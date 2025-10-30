@@ -17,7 +17,23 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Pourboire - Tip anyone on X with Solana",
-  description: "Send instant SOL/USDC tips to any X post with @Pourboire. Zero fees, instant payments, and auto-pay features powered by x402.",
+  description: "Send instant SOL/USDC tips to any X post with @Pourboireonsol. Zero fees, instant payments, and auto-pay features powered by x402.",
+  openGraph: {
+    title: "Pourboire - Tip anyone on X with Solana",
+    description: "Send instant SOL/USDC tips to any X post with @Pourboireonsol. Zero fees, instant payments, and auto-pay features powered by x402.",
+    url: "https://pourboire.tips/",
+    siteName: "Pourboire",
+    images: [],
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Pourboire - Tip anyone on X with Solana",
+    description: "Send instant SOL/USDC tips to any X post with @Pourboireonsol. Zero fees, instant payments, and auto-pay features powered by x402.",
+  },
+  icons: {
+    icon: "/pour%20(1).png",
+  },
 };
 
 export default function RootLayout({

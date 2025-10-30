@@ -62,12 +62,12 @@ export async function POST(req: NextRequest) {
           const tx = new Transaction().add(SystemProgram.transfer({ fromPubkey: kp.publicKey, toPubkey: new PublicKey(recipient.walletAddress), lamports: Math.floor(parsed.amount * LAMPORTS_PER_SOL) }));
           const sig = await conn.sendTransaction(tx, [kp]);
           await conn.confirmTransaction(sig, 'confirmed');
-          await postTweet(`✅ Tip sent! ${parsed.amount} ${parsed.token} to ${recipientHandle}\nTx: https://solscan.io/tx/${sig}`);
+          await postTweet(`@${recipientHandle.replace(/^@/, '')} ✅ tip sent: ${parsed.amount} ${parsed.token}. Tx: https://solscan.io/tx/${sig}`);
         } catch (e) {
-          await postTweet(`ℹ️ Tip recorded for ${recipientHandle}. The recipient can claim after they sign up.`);
+          await postTweet(`@${recipientHandle.replace(/^@/, '')} a tip has been recorded for you, sign up and claim.`);
         }
       } else {
-        await postTweet(`ℹ️ Tip recorded for ${recipientHandle}. The recipient can claim after they sign up.`);
+        await postTweet(`@${recipientHandle.replace(/^@/, '')} a tip has been recorded for you, sign up and claim.`);
       }
 
       processed += 1;
