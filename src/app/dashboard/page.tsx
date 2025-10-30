@@ -1,24 +1,12 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { usePrivy } from '@privy-io/react-auth';
-import { useWallet } from '@solana/wallet-adapter-react';
-import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
+import { useWeb3Auth } from '@/components/providers/web3auth-provider';
 import { Connection, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import dynamic from 'next/dynamic';
 
 // Dynamically import WalletMultiButton to prevent hydration issues
-const DynamicWalletMultiButton = dynamic(
-  () => import('@solana/wallet-adapter-react-ui').then((mod) => mod.WalletMultiButton),
-  { 
-    ssr: false,
-    loading: () => (
-      <button className="!bg-blue-500 hover:!bg-blue-600 !rounded-xl px-4 py-2 text-white font-light tracking-tight">
-        Loading...
-      </button>
-    )
-  }
-);
+const DynamicWalletMultiButton = () => null;
 
 type HistoryItem = {
   type: 'tip' | 'transfer';
@@ -30,8 +18,7 @@ type HistoryItem = {
 };
 
 export default function Dashboard() {
-  const { user, login, logout, createWallet } = usePrivy();
-  const { publicKey, connected } = useWallet();
+  const { isReady, publicAddress, login, logout, balance: embeddedBalance } = useWeb3Auth();
   const [balance, setBalance] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'overview' | 'transactions' | 'auto-pay' | 'settings'>('overview');
@@ -42,65 +29,44 @@ export default function Dashboard() {
   const [isClient, setIsClient] = useState(false);
 
   // Client-side rendering check
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
+  useEffect(() => { setIsClient(true); }, []);
 
   // Fetch balance from Privy embedded wallet
   useEffect(() => {
-    if (user?.wallet?.address) {
-      fetchWalletBalance(user.wallet.address);
-      fetchPendingAndHistory(user.wallet.address);
+    if (publicAddress) {
+      fetchWalletBalance(publicAddress);
+      fetchPendingAndHistory(publicAddress);
     } else {
       setBalance(0);
       setLoading(false);
       setPendingTips([]);
       setHistory([]);
     }
-  }, [user?.wallet?.address]);
+  }, [publicAddress]);
 
   // Handle Privy user data
   useEffect(() => {
-    if (user) {
-      // Extract Twitter data from Privy user (if available)
-      const twitterAccount = user.linkedAccounts.find(account => account.type === 'twitter_oauth');
-      const emailAccount = user.linkedAccounts.find(account => account.type === 'email');
-      
-      if (twitterAccount) {
-        setUserData({
-          id: user.id,
-          handle: `@${twitterAccount.username}`,
-          name: twitterAccount.name,
-          profileImage: twitterAccount.profilePictureUrl,
-          bio: '',
-          walletAddress: user.wallet?.address || '',
-          isEmbedded: true
-        });
-      } else if (emailAccount) {
-        // Fallback to email if Twitter is not available
-        setUserData({
-          id: user.id,
-          handle: emailAccount.address,
-          name: emailAccount.address.split('@')[0],
-          profileImage: `https://ui-avatars.com/api/?name=${encodeURIComponent(emailAccount.address.split('@')[0])}&background=3B82F6&color=fff`,
-          bio: 'Connected via email',
-          walletAddress: user.wallet?.address || '',
-          isEmbedded: true
-        });
-      }
+    if (publicAddress) {
+      setUserData({
+        id: publicAddress,
+        handle: publicAddress,
+        name: publicAddress.slice(0, 6),
+        profileImage: `https://api.dicebear.com/8.x/identicon/svg?seed=${publicAddress}`,
+        bio: 'Connected via Web3Auth',
+        walletAddress: publicAddress,
+        isEmbedded: true
+      });
     } else {
       setUserData(null);
     }
-  }, [user]);
+  }, [publicAddress]);
 
   // Fetch real wallet balance
   const fetchWalletBalance = async (walletAddress: string) => {
     try {
       const response = await fetch(`/api/wallet/balance?address=${walletAddress}`);
       const data = await response.json();
-      if (data.success) {
-        setBalance(data.sol.amount);
-      }
+      if (data.success) setBalance(data.sol.amount);
     } catch (error) {
       console.error('Failed to fetch balance:', error);
     }
@@ -204,13 +170,13 @@ export default function Dashboard() {
               )}
             </div>
             <div className="flex items-center space-x-4">
-              {user ? (
+              {publicAddress ? (
                 <div className="flex items-center space-x-4">
                   <div className="flex items-center space-x-2 text-green-400">
                     <span className="text-sm font-light">✓ X Connected</span>
                   </div>
                   <button
-                    onClick={logout}
+                    onClick={() => logout()}
                     className="bg-red-500 hover:bg-red-600 text-white py-2 px-4 rounded-xl transition-colors font-light tracking-tight"
                   >
                     Disconnect
@@ -218,7 +184,7 @@ export default function Dashboard() {
                 </div>
               ) : (
                 <button
-                  onClick={login}
+                  onClick={() => login('twitter')}
                   className="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-xl transition-colors font-light tracking-tight"
                 >
                   Connect Account
@@ -230,7 +196,7 @@ export default function Dashboard() {
       </header>
 
       <div className="max-w-7xl mx-auto px-6 py-8">
-        {!user ? (
+        {!publicAddress ? (
           <div className="text-center py-16">
             <div className="w-24 h-24 mx-auto mb-6 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full flex items-center justify-center">
               <span className="text-3xl">🔗</span>
@@ -240,7 +206,7 @@ export default function Dashboard() {
               Connect your account to start sending and receiving tips. Twitter login preferred, but email works too.
             </p>
             <button
-              onClick={login}
+              onClick={() => login('twitter')}
               className="bg-blue-500 hover:bg-blue-600 text-white py-3 px-8 rounded-xl transition-colors text-lg font-light tracking-tight"
             >
               Connect Account
@@ -267,8 +233,8 @@ export default function Dashboard() {
                   <div className="text-right">
                     <div className="text-xs font-light text-white/70 mb-1 tracking-tight">Tip Wallet Address</div>
                     <div className="font-mono text-sm font-light">
-                      {user?.wallet?.address ? 
-                        `${user.wallet.address.slice(0, 8)}...${user.wallet.address.slice(-8)}` : 
+                      {publicAddress ? 
+                        `${publicAddress.slice(0, 8)}...${publicAddress.slice(-8)}` : 
                         'Creating wallet...'
                       }
                     </div>
@@ -559,22 +525,22 @@ export default function Dashboard() {
                     <div className="flex items-center justify-between">
                       <div>
                         <div className="font-light">
-                          {user ? 'X Account Connected' : 'Connect X Account'}
+                          {publicAddress ? 'Account Connected' : 'Connect Account'}
                         </div>
                         <div className="text-sm text-white/70 font-light">
-                          {user ? 
-                            `Connected as ${userData?.handle} - Tip wallet auto-created` :
+                          {publicAddress ? 
+                            `Connected: ${userData?.handle} - Tip wallet auto-created` :
                             'Link your X account to get started'
                           }
                         </div>
                       </div>
-                      {user ? (
+                      {publicAddress ? (
                         <div className="flex items-center space-x-2 text-green-400">
                           <span className="text-sm">✓ Connected</span>
                         </div>
                       ) : (
                         <button 
-                          onClick={login}
+                          onClick={() => login('twitter')}
                           className="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg transition-colors"
                         >
                           Connect

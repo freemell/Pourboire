@@ -471,8 +471,8 @@ export default function PhoneAppInterface({ currentStep, isVisible }: PhoneAppIn
                   <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full flex items-center justify-center mx-auto mb-4">
                     <span className="text-2xl font-bold">01</span>
                   </div>
-                  <h3 className="text-lg font-semibold mb-2">Connect Wallet</h3>
-                  <p className="text-white/70 text-sm">Link your Solana wallet to get started</p>
+                  <h3 className="text-lg font-semibold mb-2">Login with X (Web3Auth)</h3>
+                  <p className="text-white/70 text-sm">Tap “Connect Account” and choose Twitter</p>
                 </div>
                 
                 <div className="text-center">

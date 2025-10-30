@@ -7,8 +7,8 @@ import gsap from 'gsap';
 const steps = [
   {
     number: '01',
-    title: 'Connect your wallet',
-    description: 'Link your Solana wallet or create a new one to get started.',
+    title: 'Login with X (Web3Auth)',
+    description: 'Tap “Connect Account” and choose Twitter in the Web3Auth modal.',
     icon: '🔗'
   },
   {
