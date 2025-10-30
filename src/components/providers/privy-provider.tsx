@@ -34,9 +34,9 @@ export const PrivyProvider: FC<PrivyProviderProps> = ({ children }) => {
           
           // Configure embedded wallets
           embeddedWallets: {
-            // Solana-only; do not create for existing users
+            // Solana-only; prevent creating a new embedded wallet for existing users
             solana: ({
-              createOnLogin: 'new-users',
+              createOnLogin: 'users-without-wallets',
             } as any),
           },
           
