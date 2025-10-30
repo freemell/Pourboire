@@ -9,6 +9,10 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@web3auth/base": "^8.12.4",
+    "@web3auth/modal": "^8.12.4",
+    "@web3auth/openlogin-adapter": "^8.12.4",
+    "@web3auth/solana-provider": "^8.12.4",
     "@gsap/react": "^2.1.2",
     "@jup-ag/api": "^6.0.45",
     "@privy-io/react-auth": "^3.4.1",
