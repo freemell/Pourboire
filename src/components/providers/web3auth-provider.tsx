@@ -58,31 +58,15 @@ export default function Web3AuthProvider({ children }: { children: React.ReactNo
 
         const w3a = new Web3Auth({
           clientId,
-          web3AuthNetwork: (process.env.NEXT_PUBLIC_WEB3AUTH_NETWORK as string) || 'sapphire_mainnet',
-          privateKeyProvider,
-          chainConfig: {
-            chainNamespace: CHAIN_NAMESPACES.SOLANA,
-            chainId: (isDevnet ? '0x3' : '0x1') as string,
-            rpcTarget: process.env.NEXT_PUBLIC_SOLANA_RPC_URL || (isDevnet ? 'https://api.devnet.solana.com' : 'https://api.mainnet-beta.solana.com'),
-            displayName: process.env.NEXT_PUBLIC_SOLANA_NETWORK_NAME || (isDevnet ? 'Solana Devnet' : 'Solana Mainnet'),
-            ticker: 'SOL',
-            tickerName: 'Solana',
-          },
+          web3AuthNetwork: (process.env.NEXT_PUBLIC_WEB3AUTH_NETWORK === 'sapphire_devnet' ? 'sapphire_devnet' : 'sapphire_mainnet'),
+          privateKeyProvider: privateKeyProvider as unknown as any,
         });
 
         const openloginAdapter = new OpenloginAdapter({
           adapterSettings: {
             uxMode: 'popup',
-            loginConfig: {
-              // Enable common socials; Twitter uses OAuth 1.0a via Web3Auth infra
-              google: { name: 'Google', verifier: '' },
-              twitter: { name: 'Twitter', verifier: '' },
-              discord: { name: 'Discord', verifier: '' },
-            },
           },
-          loginSettings: {
-            mfaLevel: 'optional',
-          },
+          loginSettings: { mfaLevel: 'optional' },
         });
 
         // Backward/forward compatible init across SDK versions
@@ -135,9 +119,9 @@ export default function Web3AuthProvider({ children }: { children: React.ReactNo
     }
   }, []);
 
-  const login = useCallback(async (loginProvider?: 'google' | 'twitter' | 'discord') => {
+  const login = useCallback(async (_loginProvider?: 'google' | 'twitter' | 'discord') => {
     if (!web3auth) return;
-    const prov = (await web3auth.connect({ loginProvider })) as IProvider;
+    const prov = (await web3auth.connect()) as IProvider;
     setProvider(prov);
     const address = await getAddress(prov);
     setPublicAddress(address);

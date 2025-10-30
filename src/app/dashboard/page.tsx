@@ -106,7 +106,7 @@ export default function Dashboard() {
       if (data.success) {
         setPendingTips(prev => prev.filter(t => (t.id || t._id) !== tipId));
         // refresh history after claim
-        if (user?.wallet?.address) fetchPendingAndHistory(user.wallet.address);
+        if (publicAddress) fetchPendingAndHistory(publicAddress);
       }
     } catch (e) {
       console.error('Claim failed', e);
@@ -487,30 +487,9 @@ export default function Dashboard() {
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {mockAutoPayRules.map((rule) => (
-                    <div key={rule.id} className="bg-white/5 border border-white/10 rounded-xl p-6 backdrop-blur-sm">
-                      <div className="flex items-center justify-between mb-4">
-                        <h4 className="font-light">{rule.name}</h4>
-                        <div className={`px-3 py-1 rounded-full text-sm font-light ${
-                          rule.active ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'
-                        }`}>
-                          {rule.active ? 'Active' : 'Inactive'}
-                        </div>
-                      </div>
-                      <div className="space-y-2 text-sm text-white/70 font-light">
-                        <div>Condition: {rule.condition}</div>
-                        <div>Amount: {formatAmount(rule.amount, rule.token)}</div>
-                      </div>
-                      <div className="flex space-x-2 mt-4">
-                        <button className="flex-1 bg-white/10 hover:bg-white/20 text-white py-2 px-4 rounded-lg transition-colors font-light tracking-tight">
-                          Edit
-                        </button>
-                        <button className="flex-1 border border-white/20 hover:bg-white/10 text-white py-2 px-4 rounded-lg transition-colors font-light tracking-tight">
-                          {rule.active ? 'Disable' : 'Enable'}
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                  <div className="bg-white/5 border border-white/10 rounded-xl p-6 backdrop-blur-sm">
+                    <div className="text-white/60 text-sm">No rules yet</div>
+                  </div>
                 </div>
               </div>
             )}
