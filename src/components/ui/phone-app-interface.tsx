@@ -272,7 +272,7 @@ export default function PhoneAppInterface({ currentStep, isVisible }: PhoneAppIn
               </div>
               
               <div className="bg-gradient-to-r from-blue-500/20 to-cyan-500/20 rounded-xl p-4 border border-blue-500/30">
-                <div className="text-blue-300 text-sm font-mono">@Pourboire tip 0.5 SOL</div>
+                <div className="text-blue-300 text-sm font-mono">@pourboireonsol tip 0.5 SOL</div>
               </div>
               
               <div className="flex justify-between items-center mt-4">
@@ -315,7 +315,7 @@ export default function PhoneAppInterface({ currentStep, isVisible }: PhoneAppIn
               </div>
               
               <div className="bg-gradient-to-r from-blue-500/20 to-cyan-500/20 rounded-xl p-4 border border-blue-500/30 mb-4">
-                <div className="text-blue-300 text-sm font-mono">@Pourboire tip 0.5 SOL</div>
+                <div className="text-blue-300 text-sm font-mono">@pourboireonsol tip 0.5 SOL</div>
               </div>
               
               <div className="flex justify-between items-center">

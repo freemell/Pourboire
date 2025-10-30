@@ -41,8 +41,8 @@ const tutorialSteps: TutorialStep[] = [
   },
   {
     id: 'type-command',
-    title: 'Type @Pourboire Command',
-    description: 'Type "@Pourboire tip 0.5 SOL" to send a tip',
+    title: 'Type @pourboireonsol Command',
+    description: 'Type "@pourboireonsol tip 0.5 SOL" to send a tip',
     action: 'Type the command',
     highlight: 'text-input'
   },

@@ -466,7 +466,7 @@ export default function SplinePhoneWithContent() {
             <div className="space-y-3">
               {[
                 { step: '01', title: 'Connect Wallet', desc: 'Link your Solana wallet' },
-                { step: '02', title: 'Reply with @Pourboire', desc: 'Use simple commands' },
+                { step: '02', title: 'Reply with @pourboireonsol', desc: 'Use simple commands' },
                 { step: '03', title: 'Instant Payment', desc: 'Bot processes instantly' },
                 { step: '04', title: 'Set Auto-Pay', desc: 'Configure automatic rules' }
               ].map((step, index) => (

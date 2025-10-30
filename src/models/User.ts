@@ -52,7 +52,7 @@ const UserSchema = new Schema<IUser>({
   twitterId: { type: String, required: true, unique: true },
   handle: { type: String, required: true, unique: true },
   name: { type: String, required: true },
-  profileImage: { type: String, required: true },
+  profileImage: { type: String, default: '' },
   bio: { type: String, default: '' },
   walletAddress: { type: String, required: true, unique: true },
   encryptedPrivateKey: { type: String }, // Only for custodial wallets

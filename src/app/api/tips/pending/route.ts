@@ -35,12 +35,13 @@ export async function GET(request: NextRequest) {
       pending: user.pendingClaims || [],
       history: user.history || [],
     });
-  } catch (error) {
-    console.error('Fetch pending tips error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+  } catch (error: any) {
+    const message = error?.message || String(error);
+    console.error('Fetch pending tips error:', message);
+    if (process.env.NODE_ENV !== 'production') {
+      return NextResponse.json({ error: message }, { status: 500 });
+    }
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 

@@ -34,12 +34,10 @@ export const PrivyProvider: FC<PrivyProviderProps> = ({ children }) => {
           
           // Configure embedded wallets
           embeddedWallets: {
-            solana: {
-              createOnLogin: 'all-users',
-            },
-            ethereum: {
-              createOnLogin: 'all-users',
-            },
+            // Solana-only; do not create for existing users
+            solana: ({
+              createOnLogin: 'new-users',
+            } as any),
           },
           
           // Configure appearance

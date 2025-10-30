@@ -5,10 +5,6 @@ await sodium.ready;
 
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY;
 
-if (!ENCRYPTION_KEY) {
-  throw new Error('Please define the ENCRYPTION_KEY environment variable inside .env.local');
-}
-
 // Convert hex string to Uint8Array
 function hexToUint8Array(hex: string): Uint8Array {
   const bytes = new Uint8Array(hex.length / 2);
@@ -26,7 +22,10 @@ function uint8ArrayToHex(bytes: Uint8Array): string {
 }
 
 export function encryptPrivateKey(privateKey: Uint8Array): string {
-  const key = hexToUint8Array(ENCRYPTION_KEY!);
+  if (!ENCRYPTION_KEY) {
+    throw new Error('ENCRYPTION_KEY is missing. Set it in .env.local');
+  }
+  const key = hexToUint8Array(ENCRYPTION_KEY);
   
   // Generate a random nonce
   const nonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES);
@@ -43,7 +42,10 @@ export function encryptPrivateKey(privateKey: Uint8Array): string {
 }
 
 export function decryptPrivateKey(encryptedHex: string): Uint8Array {
-  const key = hexToUint8Array(ENCRYPTION_KEY!);
+  if (!ENCRYPTION_KEY) {
+    throw new Error('ENCRYPTION_KEY is missing. Set it in .env.local');
+  }
+  const key = hexToUint8Array(ENCRYPTION_KEY);
   const combined = hexToUint8Array(encryptedHex);
   
   // Extract nonce and encrypted data

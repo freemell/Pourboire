@@ -2,11 +2,15 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { usePrivy } from '@privy-io/react-auth';
-import { Connection, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
+import { Connection, PublicKey, LAMPORTS_PER_SOL, Transaction, SystemProgram } from '@solana/web3.js';
 import dynamic from 'next/dynamic';
+import { useWallet } from '@solana/wallet-adapter-react';
 
 // Dynamically import WalletMultiButton to prevent hydration issues
-const DynamicWalletMultiButton = () => null;
+const DynamicWalletMultiButton = dynamic(
+  () => import('@solana/wallet-adapter-react-ui').then(m => m.WalletMultiButton),
+  { ssr: false }
+);
 
 type HistoryItem = {
   type: 'tip' | 'transfer';
@@ -27,23 +31,80 @@ export default function Dashboard() {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [dbUserId, setDbUserId] = useState<string | null>(null);
   const [isClient, setIsClient] = useState(false);
+  const [tipAddress, setTipAddress] = useState<string | null>(null);
+  const [showFund, setShowFund] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [fundAmount, setFundAmount] = useState<string>("");
+  const { publicKey, signTransaction, sendTransaction, connected } = useWallet();
+  const rpcEndpoint = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
+
+  const getSolanaAddress = (u: any): string | null => {
+    if (!u) return null;
+    // Prefer primary wallet if it’s Solana
+    const primary = (u as any).wallet;
+    if (primary?.address && (primary as any).chainType === 'solana') return primary.address;
+    // Search linked accounts for a Solana wallet
+    const linked = (u as any).linkedAccounts || [];
+    const sol = linked.find((a: any) => a.type === 'wallet' && a.chainType === 'solana');
+    if (sol?.address) return sol.address;
+    return null;
+  };
+
+  const formatAddress = (addr?: string | null) => {
+    if (!addr) return '';
+    return `${addr.slice(0, 8)}...${addr.slice(-8)}`;
+  };
 
   // Client-side rendering check
   useEffect(() => { setIsClient(true); }, []);
 
-  // Fetch balance from embedded wallet
+  const ensureTipAccount = async (handle: string) => {
+    try {
+      const res = await fetch('/api/wallet/ensure-tip-account', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ handle })
+      });
+      if (!res.ok) {
+        console.error('ensure-tip-account failed', await res.text());
+        const fallback = getSolanaAddress(user);
+        if (fallback) {
+          setTipAddress(fallback);
+          await fetchWalletBalance(fallback);
+          await fetchPendingAndHistory(fallback);
+        }
+        return;
+      }
+      const data = await res.json();
+      if (data?.walletAddress) {
+        setTipAddress(data.walletAddress);
+        await fetchWalletBalance(data.walletAddress);
+        await fetchPendingAndHistory(data.walletAddress);
+      }
+    } catch (e) {
+      console.error('ensure-tip-account error', e);
+      const fallback = getSolanaAddress(user);
+      if (fallback) {
+        setTipAddress(fallback);
+        await fetchWalletBalance(fallback);
+        await fetchPendingAndHistory(fallback);
+      }
+    }
+  };
+
+  // Fetch balance from embedded/custodial wallet
   useEffect(() => {
-    const addr = user?.wallet?.address;
-    if (addr) {
-      fetchWalletBalance(addr);
-      fetchPendingAndHistory(addr);
-    } else {
+    if (!user) {
+      setTipAddress(null);
       setBalance(0);
       setLoading(false);
       setPendingTips([]);
       setHistory([]);
+      return;
     }
-  }, [user?.wallet?.address]);
+    const handle = userData?.handle;
+    if (handle) {
+      ensureTipAccount(handle);
+    }
+  }, [user?.wallet?.address, userData?.handle]);
 
   // Handle user profile from Privy linked accounts
   useEffect(() => {
@@ -60,7 +121,7 @@ export default function Dashboard() {
           name,
           profileImage,
           bio: '',
-          walletAddress: user.wallet?.address || '',
+          walletAddress: getSolanaAddress(user) || '',
           isEmbedded: true,
         });
       } else if (emailAccount) {
@@ -71,7 +132,7 @@ export default function Dashboard() {
           name,
           profileImage: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=3B82F6&color=fff`,
           bio: 'Connected via email',
-          walletAddress: user.wallet?.address || '',
+          walletAddress: getSolanaAddress(user) || '',
           isEmbedded: true,
         });
       }
@@ -125,7 +186,8 @@ export default function Dashboard() {
       if (data.success) {
         setPendingTips(prev => prev.filter(t => (t.id || t._id) !== tipId));
         // refresh history after claim
-        if (user?.wallet?.address) fetchPendingAndHistory(user.wallet.address);
+        const addr = getSolanaAddress(user);
+        if (addr) fetchPendingAndHistory(addr);
       }
     } catch (e) {
       console.error('Claim failed', e);
@@ -182,6 +244,9 @@ export default function Dashboard() {
               <span className="px-3 py-1 bg-green-500/20 text-green-400 rounded-full text-xs font-light">
                 Live
               </span>
+              <a href="https://x.com/Pourboireonsol" target="_blank" rel="noreferrer" className="px-3 py-1 bg-blue-500/20 text-blue-400 rounded-full text-xs font-light hover:bg-blue-500/30">
+                Follow on X
+              </a>
               {userData && (
                 <span className="px-3 py-1 bg-blue-500/20 text-blue-400 rounded-full text-xs font-light">
                   {userData.handle}
@@ -251,12 +316,16 @@ export default function Dashboard() {
                   </div>
                   <div className="text-right">
                     <div className="text-xs font-light text-white/70 mb-1 tracking-tight">Tip Wallet Address</div>
-                    <div className="font-mono text-sm font-light">
-                      {user?.wallet?.address ? 
-                        `${user.wallet.address.slice(0, 8)}...${user.wallet.address.slice(-8)}` : 
-                        'Creating wallet...'
-                      }
-                    </div>
+                    <button
+                      onClick={() => {
+                        const addr = getSolanaAddress(user);
+                        if (addr) { navigator.clipboard.writeText(addr); setCopied(true); setTimeout(()=>setCopied(false),1000); }
+                      }}
+                      className="font-mono text-sm font-light rounded px-2 py-1 hover:bg-white/5 transition"
+                      title="Copy"
+                    >
+                      {getSolanaAddress(user) ? formatAddress(getSolanaAddress(user)) : 'Creating wallet...'}
+                    </button>
                     <div className="text-xs text-green-400 mt-1 font-light">
                       ✓ Auto-created for tips
                     </div>
@@ -282,10 +351,7 @@ export default function Dashboard() {
                 </div>
                 <div className="text-right">
                   <button 
-                    onClick={() => {
-                      // This will open a wallet connection modal for funding
-                      alert('Connect your wallet to fund your tip account');
-                    }}
+                    onClick={async () => { setShowFund(true); if (userData?.handle) { try { await ensureTipAccount(userData.handle); } catch (e) { console.error('ensureTipAccount failed', e); } } }}
                     className="bg-blue-500 hover:bg-blue-600 text-white py-3 px-6 rounded-xl transition-colors font-light tracking-tight"
                   >
                     Fund Account
@@ -549,6 +615,49 @@ export default function Dashboard() {
                 </div>
 
                 <div className="bg-white/5 border border-white/10 rounded-xl p-6 backdrop-blur-sm">
+                  <h4 className="font-light mb-4">Wallet Tools</h4>
+                  <div className="space-y-3">
+                    <button
+                      onClick={async () => {
+                        try {
+                          if (!userData?.handle) return;
+                          const res = await fetch('/api/wallet/export', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ handle: userData.handle })
+                          });
+                          const data = await res.json();
+                          if (!res.ok || !data.success) {
+                            alert(data.error || 'Export failed');
+                            return;
+                          }
+                          const blob = new Blob([
+                            JSON.stringify({
+                              address: data.walletAddress,
+                              privateKeyHex: data.privateKeyHex,
+                              note: 'Keep this file secret. Anyone with this key can spend your funds.'
+                            }, null, 2)
+                          ], { type: 'application/json' });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = 'pourboire-wallet-export.json';
+                          a.click();
+                          URL.revokeObjectURL(url);
+                        } catch (e) {
+                          console.error('export error', e);
+                          alert('Export failed');
+                        }
+                      }}
+                      className="bg-red-500/90 hover:bg-red-600 text-white py-2 px-4 rounded-lg transition-colors font-light tracking-tight"
+                    >
+                      Export Custodial Wallet (Dev only)
+                    </button>
+                    <div className="text-xs text-white/60">Only available in development and for custodial wallets.</div>
+                  </div>
+                </div>
+
+                <div className="bg-white/5 border border-white/10 rounded-xl p-6 backdrop-blur-sm">
                   <h4 className="font-light mb-4">Notification Preferences</h4>
                   <div className="space-y-4">
                     <label className="flex items-center space-x-3">
@@ -571,6 +680,110 @@ export default function Dashboard() {
         )}
       </div>
       </div>
+      {showFund && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-6 w-full max-w-md text-white">
+            <h3 className="text-xl font-extralight mb-2">Fund Tip Account</h3>
+            <p className="text-white/70 text-sm mb-4">Send SOL to your deposit address. This funds your tipping account.</p>
+            <button
+              onClick={() => { if (tipAddress) { navigator.clipboard.writeText(tipAddress); setCopied(true); setTimeout(()=>setCopied(false),1000); }}}
+              className="bg-black/50 rounded-xl px-4 py-3 font-mono text-sm w-full text-left hover:bg-black/60 transition"
+              title="Copy"
+            >
+              {tipAddress ? formatAddress(tipAddress) : '...'}
+            </button>
+            <div className="mt-4 flex items-center gap-3">
+              {tipAddress && (
+                <a href={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent('solana:'+tipAddress)}`} target="_blank" rel="noreferrer" className="px-3 py-2 border border-white/20 rounded-lg hover:bg-white/10 transition">QR</a>
+              )}
+              <div className="flex-1" />
+              <button onClick={() => setShowFund(false)} className="px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg">Close</button>
+            </div>
+            <div className="mt-4">
+              <label className="text-sm text-white/70">Amount (SOL)</label>
+              <input value={fundAmount} onChange={(e)=>setFundAmount(e.target.value)} placeholder="e.g. 0.5" className="mt-1 w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 outline-none" />
+              {tipAddress && (
+                <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <DynamicWalletMultiButton className="w-full !bg-purple-600 hover:!bg-purple-700 !text-white !rounded-lg !h-11" />
+                  <button
+                    onClick={async () => {
+                      if (!publicKey || !sendTransaction || !tipAddress) return;
+                      try {
+                        const conn = new Connection(rpcEndpoint);
+                        const amountLamports = Math.floor((Number(fundAmount)||0) * LAMPORTS_PER_SOL);
+
+                        const sendOnce = async (): Promise<string> => {
+                          const tx = new Transaction({ feePayer: publicKey }).add(
+                            SystemProgram.transfer({
+                              fromPubkey: publicKey,
+                              toPubkey: new PublicKey(tipAddress),
+                              lamports: amountLamports
+                            })
+                          );
+                          return await sendTransaction(tx, conn, { preflightCommitment: 'confirmed', maxRetries: 3 });
+                        };
+
+                        const waitFor = async (sig: string): Promise<boolean> => {
+                          const start = Date.now();
+                          while (Date.now() - start < 60000) {
+                            const st = await (conn as any).getSignatureStatuses([sig], { searchTransactionHistory: true });
+                            const v = st?.value?.[0];
+                            if (v?.err) {
+                              throw new Error('Transaction failed');
+                            }
+                            if (v?.confirmationStatus === 'confirmed' || v?.confirmationStatus === 'finalized') return true;
+                            await new Promise(r => setTimeout(r, 1500));
+                          }
+                          return false;
+                        };
+
+                        // First attempt
+                        let sig = await sendOnce();
+                        let ok = await waitFor(sig);
+
+                        // One automatic retry if not confirmed in time
+                        if (!ok) {
+                          sig = await sendOnce();
+                          ok = await waitFor(sig);
+                        }
+
+                        if (!ok) throw new Error(`Timeout waiting for confirmation. Signature: ${sig}`);
+
+                        await fetchWalletBalance(tipAddress);
+                        setShowFund(false);
+                      } catch (e: any) {
+                        const msg = e?.message || String(e);
+                        if (msg.includes('403') || msg.toLowerCase().includes('forbidden')) {
+                          alert('Your Solana RPC blocked the request (403). Set NEXT_PUBLIC_SOLANA_RPC_URL to a provider RPC with an API key (e.g. Helius, QuickNode, Triton) and reload.');
+                        }
+                        if (msg.toLowerCase().includes('debit') || msg.toLowerCase().includes('insufficient')) {
+                          alert('Your connected wallet needs sufficient SOL to cover network fee and amount. Please top up and try again or use the Deep Link option.');
+                        }
+                        if (typeof (e as any)?.getLogs === 'function') {
+                          try { console.error('transaction logs', await (e as any).getLogs()); } catch {}
+                        }
+                        console.error('transfer error', e);
+                      }
+                    }}
+                    className="w-full px-3 py-2 bg-blue-500 hover:bg-blue-600 rounded-lg disabled:opacity-50"
+                    disabled={!connected || !fundAmount}
+                  >
+                    Transfer to Tip Wallet
+                  </button>
+                  <a
+                    href={`https://phantom.app/ul/transfer?recipient=${encodeURIComponent(tipAddress)}&amount=${encodeURIComponent(fundAmount || '')}&label=Pourboire&message=Fund%20tip%20account`}
+                    target="_blank" rel="noreferrer"
+                    className="w-full px-3 py-2 border border-white/20 hover:bg-white/10 rounded-lg inline-flex items-center justify-center"
+                  >
+                    Open Wallet (Deep Link)
+                  </a>
+                </div>
+              )}
+            </div>
+            
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { PrivyProvider } from "@/components/providers/privy-provider";
+import { WalletProvider } from "@/components/providers/wallet-provider";
 import { PrivyErrorBoundary } from "@/components/providers/privy-error-boundary";
 
 const geistSans = Geist({
@@ -31,7 +32,9 @@ export default function RootLayout({
       >
         <PrivyErrorBoundary>
           <PrivyProvider>
-            {children}
+            <WalletProvider>
+              {children}
+            </WalletProvider>
           </PrivyProvider>
         </PrivyErrorBoundary>
       </body>
