@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { usePrivy } from '@privy-io/react-auth';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
@@ -20,79 +20,14 @@ const DynamicWalletMultiButton = dynamic(
   }
 );
 
-// Mock data for demonstration
-const mockTransactions = [
-  {
-    id: '1',
-    type: 'sent',
-    amount: 0.5,
-    token: 'SOL',
-    recipient: '@alice',
-    timestamp: new Date(Date.now() - 1000 * 60 * 30), // 30 minutes ago
-    txHash: '3x7k...9m2p',
-    status: 'confirmed'
-  },
-  {
-    id: '2',
-    type: 'received',
-    amount: 1.2,
-    token: 'SOL',
-    sender: '@bob',
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 hours ago
-    txHash: '9m2p...3x7k',
-    status: 'confirmed'
-  },
-  {
-    id: '3',
-    type: 'sent',
-    amount: 0.1,
-    token: 'USDC',
-    recipient: '@charlie',
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24), // 1 day ago
-    txHash: '7k3x...2p9m',
-    status: 'confirmed'
-  }
-];
-
-const mockAutoPayRules = [
-  {
-    id: '1',
-    name: 'Follower Rewards',
-    condition: 'If user follows me',
-    amount: 0.1,
-    token: 'SOL',
-    active: true
-  },
-  {
-    id: '2',
-    name: 'Giveaway Mode',
-    condition: 'Random 5 replies',
-    amount: 0.05,
-    token: 'SOL',
-    active: false
-  }
-];
-
-const mockPendingTips = [
-  {
-    id: '1',
-    amount: 0.5,
-    token: 'SOL',
-    sender: '@alice',
-    tweetId: '1234567890',
-    timestamp: new Date(Date.now() - 1000 * 60 * 15), // 15 minutes ago
-    status: 'pending'
-  },
-  {
-    id: '2',
-    amount: 1.2,
-    token: 'USDC',
-    sender: '@bob',
-    tweetId: '1234567891',
-    timestamp: new Date(Date.now() - 1000 * 60 * 60), // 1 hour ago
-    status: 'pending'
-  }
-];
+type HistoryItem = {
+  type: 'tip' | 'transfer';
+  amount: number;
+  token: 'SOL' | 'USDC';
+  counterparty: string;
+  txHash: string;
+  date: string | Date;
+};
 
 export default function Dashboard() {
   const { user, login, logout, createWallet } = usePrivy();
@@ -102,6 +37,8 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<'overview' | 'transactions' | 'auto-pay' | 'settings'>('overview');
   const [userData, setUserData] = useState<any>(null);
   const [pendingTips, setPendingTips] = useState<any[]>([]);
+  const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [dbUserId, setDbUserId] = useState<string | null>(null);
   const [isClient, setIsClient] = useState(false);
 
   // Client-side rendering check
@@ -113,9 +50,12 @@ export default function Dashboard() {
   useEffect(() => {
     if (user?.wallet?.address) {
       fetchWalletBalance(user.wallet.address);
+      fetchPendingAndHistory(user.wallet.address);
     } else {
       setBalance(0);
       setLoading(false);
+      setPendingTips([]);
+      setHistory([]);
     }
   }, [user?.wallet?.address]);
 
@@ -151,7 +91,6 @@ export default function Dashboard() {
     } else {
       setUserData(null);
     }
-    setPendingTips(mockPendingTips);
   }, [user]);
 
   // Fetch real wallet balance
@@ -167,10 +106,45 @@ export default function Dashboard() {
     }
   };
 
-  const claimTip = (tipId: string) => {
-    // Mock tip claiming
-    setPendingTips(prev => prev.filter(tip => tip.id !== tipId));
-    // In a real app, this would trigger a Solana transaction
+  const fetchPendingAndHistory = async (walletAddress: string) => {
+    try {
+      const res = await fetch(`/api/tips/pending?walletAddress=${walletAddress}`);
+      const data = await res.json();
+      if (data.success) {
+        setPendingTips((data.pending || []).map((p: any) => ({
+          id: p._id || p.id,
+          amount: p.amount,
+          token: p.token,
+          sender: p.sender,
+          tweetId: p.fromTx,
+          timestamp: new Date(),
+          status: 'pending'
+        })));
+        setHistory((data.history || []).map((h: any) => ({ ...h })));
+        setDbUserId(data.user?.id || null);
+      }
+    } catch (e) {
+      console.error('Failed to fetch pending/history', e);
+    }
+  };
+
+  const claimTip = async (tipId: string) => {
+    try {
+      if (!dbUserId) return;
+      const res = await fetch('/api/tips/claim', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: dbUserId, tipId })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setPendingTips(prev => prev.filter(t => (t.id || t._id) !== tipId));
+        // refresh history after claim
+        if (user?.wallet?.address) fetchPendingAndHistory(user.wallet.address);
+      }
+    } catch (e) {
+      console.error('Claim failed', e);
+    }
   };
 
   const formatDate = (date: Date) => {
@@ -408,18 +382,18 @@ export default function Dashboard() {
                   <div className="bg-white/5 border border-white/10 rounded-xl p-6 backdrop-blur-sm">
                     <h3 className="text-lg font-extralight tracking-tight mb-4">Recent Activity</h3>
                     <div className="space-y-3">
-                      {mockTransactions.slice(0, 3).map((tx) => (
-                        <div key={tx.id} className="flex items-center justify-between py-2">
+                      {history.slice(0, 3).map((tx, idx) => (
+                        <div key={idx} className="flex items-center justify-between py-2">
                           <div className="flex items-center space-x-3">
                             <div className={`w-2 h-2 rounded-full ${
-                              tx.type === 'sent' ? 'bg-red-500' : 'bg-green-500'
+                              tx.type === 'transfer' ? 'bg-red-500' : 'bg-green-500'
                             }`} />
                             <span className="text-sm font-light">
-                              {tx.type === 'sent' ? 'Sent' : 'Received'} {formatAmount(tx.amount, tx.token)}
+                              {tx.type === 'transfer' ? 'Sent' : 'Received'} {formatAmount(tx.amount, tx.token)}
                             </span>
                           </div>
                           <span className="text-xs text-white/60 font-light">
-                            {formatDate(tx.timestamp)}
+                            {formatDate(new Date(tx.date))}
                           </span>
                         </div>
                       ))}
@@ -429,19 +403,7 @@ export default function Dashboard() {
                   <div className="bg-white/5 border border-white/10 rounded-xl p-6 backdrop-blur-sm">
                     <h3 className="text-lg font-extralight tracking-tight mb-4">Auto-Pay Rules</h3>
                     <div className="space-y-3">
-                      {mockAutoPayRules.map((rule) => (
-                        <div key={rule.id} className="flex items-center justify-between py-2">
-                          <div>
-                            <div className="text-sm font-light">{rule.name}</div>
-                            <div className="text-xs text-white/60 font-light">{rule.condition}</div>
-                          </div>
-                          <div className={`px-2 py-1 rounded-full text-xs font-light ${
-                            rule.active ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'
-                          }`}>
-                            {rule.active ? 'Active' : 'Inactive'}
-                          </div>
-                        </div>
-                      ))}
+                      <div className="text-sm text-white/60 font-light">No rules yet</div>
                     </div>
                   </div>
                 </div>
@@ -503,23 +465,23 @@ export default function Dashboard() {
                     <h3 className="text-lg font-extralight tracking-tight">Transaction History</h3>
                   </div>
                   <div className="divide-y divide-white/10">
-                    {mockTransactions.map((tx) => (
-                      <div key={tx.id} className="p-6 hover:bg-white/5 transition-colors">
+                    {history.map((tx, idx) => (
+                      <div key={idx} className="p-6 hover:bg-white/5 transition-colors">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-4">
                             <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                              tx.type === 'sent' ? 'bg-red-500/20' : 'bg-green-500/20'
+                              tx.type === 'transfer' ? 'bg-red-500/20' : 'bg-green-500/20'
                             }`}>
                               <span className="text-lg">
-                                {tx.type === 'sent' ? '↗️' : '↙️'}
+                                {tx.type === 'transfer' ? '↗️' : '↙️'}
                               </span>
                             </div>
                             <div>
                               <div className="font-light">
-                                {tx.type === 'sent' ? 'Sent to' : 'Received from'} {tx.recipient || tx.sender}
+                                {tx.type === 'transfer' ? 'Sent to' : 'Received from'} {tx.counterparty}
                               </div>
                               <div className="text-sm text-white/60 font-light">
-                                {formatDate(tx.timestamp)} • 
+                                {formatDate(new Date(tx.date))} • 
                                 <a 
                                   href={`https://solscan.io/tx/${tx.txHash}`}
                                   target="_blank"
@@ -533,12 +495,12 @@ export default function Dashboard() {
                           </div>
                           <div className="text-right">
                             <div className={`font-light ${
-                              tx.type === 'sent' ? 'text-red-400' : 'text-green-400'
+                              tx.type === 'transfer' ? 'text-red-400' : 'text-green-400'
                             }`}>
-                              {tx.type === 'sent' ? '-' : '+'}{formatAmount(tx.amount, tx.token)}
+                              {tx.type === 'transfer' ? '-' : '+'}{formatAmount(tx.amount, tx.token)}
                             </div>
                             <div className="text-sm text-white/60 capitalize font-light">
-                              {tx.status}
+                              {tx.type}
                             </div>
                           </div>
                         </div>
