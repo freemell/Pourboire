@@ -91,15 +91,17 @@ export async function postTweet(text: string): Promise<string | null> {
 export async function searchMentions(query: string, sinceId?: string): Promise<any[]> {
   try {
     const { bearerClient } = getTwitterClient();
-    
-    const tweets = await bearerClient.v2.search(query, {
+    const res: any = await bearerClient.v2.search(query, {
       'tweet.fields': ['id', 'text', 'author_id', 'created_at', 'public_metrics'],
       'user.fields': ['id', 'username', 'name'],
-      'max_results': 100,
-      'since_id': sinceId
+      max_results: 50,
+      since_id: sinceId,
     });
-    
-    return tweets.data?.data || [];
+    // twitter-api-v2 returns a paginator; normalize to array of tweets
+    if (Array.isArray(res?.data)) return res.data;
+    if (Array.isArray(res?.tweets)) return res.tweets;
+    if (Array.isArray(res?.data?.data)) return res.data.data;
+    return [];
   } catch (error) {
     console.error('Error searching mentions:', error);
     return [];
