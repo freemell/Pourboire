@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { Web3Auth } from '@web3auth/modal';
-import { CHAIN_NAMESPACES, IProvider } from '@web3auth/base';
+import { CHAIN_NAMESPACES, IProvider, WALLET_ADAPTERS } from '@web3auth/base';
 import { OpenloginAdapter } from '@web3auth/openlogin-adapter';
 import { SolanaPrivateKeyProvider } from '@web3auth/solana-provider';
 import { Connection, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
@@ -71,13 +71,12 @@ export default function Web3AuthProvider({ children }: { children: React.ReactNo
 
         // Backward/forward compatible init across SDK versions
         try {
-          // @ts-ignore - older SDKs
+          // configure OpenLogin if supported
           if (typeof (w3a as any).configureAdapter === 'function') {
-            // @ts-ignore
             (w3a as any).configureAdapter(openloginAdapter);
           }
           if (typeof (w3a as any).initModal === 'function') {
-            await (w3a as any).initModal();
+            await (w3a as any).initModal({});
           } else if (typeof (w3a as any).init === 'function') {
             await (w3a as any).init();
           }
@@ -119,9 +118,21 @@ export default function Web3AuthProvider({ children }: { children: React.ReactNo
     }
   }, []);
 
-  const login = useCallback(async (_loginProvider?: 'google' | 'twitter' | 'discord') => {
+  const login = useCallback(async (loginProvider?: 'google' | 'twitter' | 'discord') => {
     if (!web3auth) return;
-    const prov = (await web3auth.connect()) as IProvider;
+    let prov: IProvider | null = null;
+    try {
+      if (typeof (web3auth as any).connect === 'function') {
+        prov = (await (web3auth as any).connect({
+          adapter: WALLET_ADAPTERS.OPENLOGIN,
+          loginProvider,
+        })) as IProvider;
+      }
+    } catch (e) {
+      // fallback to no-arg connect if adapter param unsupported
+      prov = (await (web3auth as any).connect()) as IProvider;
+    }
+    if (!prov) return;
     setProvider(prov);
     const address = await getAddress(prov);
     setPublicAddress(address);
