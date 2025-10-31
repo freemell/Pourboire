@@ -85,20 +85,21 @@ export default function Dashboard() {
 
   const ensureTipAccount = async (handle: string) => {
     try {
+      console.log('ensureTipAccount called with handle:', handle);
+      
       // Get Twitter ID from user's linked accounts if available
       const twitterAccount = user?.linkedAccounts?.find((a: any) => a.type === 'twitter_oauth') as any;
       const twitterId = twitterAccount?.subject || twitterAccount?.providerId || undefined;
       
-      // Also try to use wallet address if we have it (fallback for finding existing user)
-      const existingWallet = getSolanaAddress(user);
+      // Don't pass Privy embedded wallet - we want to find/create the custodial wallet
+      console.log('Fetching custodial wallet for:', { handle, twitterId });
       
       const res = await fetch('/api/wallet/ensure-tip-account', {
         method: 'POST', 
         headers: { 'Content-Type': 'application/json' }, 
         body: JSON.stringify({ 
           handle,
-          twitterId,
-          walletAddress: existingWallet || undefined
+          twitterId
         })
       });
       if (!res.ok) {
@@ -136,9 +137,12 @@ export default function Dashboard() {
     }
     const handle = userData?.handle;
     if (handle) {
+      console.log('Calling ensureTipAccount with handle:', handle);
       ensureTipAccount(handle);
+    } else {
+      console.warn('No handle found in userData, waiting for userData to be set...');
     }
-  }, [user?.wallet?.address, userData?.handle]);
+  }, [user, userData?.handle]);
 
   // Handle user profile from Privy linked accounts
   useEffect(() => {
@@ -359,13 +363,12 @@ export default function Dashboard() {
                     <div className="text-xs font-light text-white/70 mb-1 tracking-tight">Tip Wallet Address</div>
                     <button
                       onClick={() => {
-                        const addr = getSolanaAddress(user);
-                        if (addr) { navigator.clipboard.writeText(addr); setCopied(true); setTimeout(()=>setCopied(false),1000); }
+                        if (tipAddress) { navigator.clipboard.writeText(tipAddress); setCopied(true); setTimeout(()=>setCopied(false),1000); }
                       }}
                       className="font-mono text-sm font-light rounded px-2 py-1 hover:bg-white/5 transition"
                       title="Copy"
                     >
-                      {getSolanaAddress(user) ? formatAddress(getSolanaAddress(user)) : 'Creating wallet...'}
+                      {tipAddress ? formatAddress(tipAddress) : 'Loading wallet...'}
                     </button>
                     <div className="text-xs text-green-400 mt-1 font-light">
                       ✓ Auto-created for tips
