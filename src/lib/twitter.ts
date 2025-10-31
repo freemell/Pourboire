@@ -90,8 +90,14 @@ export async function postTweet(text: string, replyToTweetId?: string): Promise<
     };
     
     if (replyToTweetId) {
+      // Ensure tweet ID is a string (Twitter API v2 requires string IDs)
+      const tweetId = String(replyToTweetId).trim();
+      if (!tweetId || tweetId === 'undefined' || tweetId === 'null') {
+        console.error('Invalid tweet ID for reply:', replyToTweetId);
+        return null;
+      }
       tweetOptions.reply = {
-        in_reply_to_tweet_id: replyToTweetId
+        in_reply_to_tweet_id: tweetId
       };
     }
     
@@ -154,6 +160,17 @@ export async function searchMentions(query: string, sinceId?: string): Promise<a
           t.author = userMap[t.author_id];
           t.username = userMap[t.author_id].username;
         }
+        // Ensure tweet ID is always a string (Twitter API v2 requires string IDs)
+        if (t.id) {
+          t.id = String(t.id);
+        }
+      }
+    }
+    
+    // Also normalize IDs for tweets that don't have author info attached
+    for (const t of tweets) {
+      if (t.id && typeof t.id !== 'string') {
+        t.id = String(t.id);
       }
     }
     

@@ -114,6 +114,13 @@ export async function POST(req: NextRequest) {
       const firstTip = tips[0];
       const t = firstTip.tweet;
       
+      // Validate tweet ID exists
+      if (!t?.id) {
+        console.error(`Tweet ID missing for batched tips. Batch key: ${batchKey}, Tips count: ${tips.length}`);
+        processed += tips.length;
+        continue;
+      }
+      
       const senderHandle = firstTip.senderHandle;
       const recipientHandle = firstTip.recipientHandle;
       const recipientUsername = recipientHandle.replace(/^@/, '');
@@ -283,9 +290,9 @@ export async function POST(req: NextRequest) {
             ? `A ${totalAmount} ${token} tip has been sent to your wallet!`
             : `${tips.length} tips totaling ${totalAmount} ${token} have been sent to your wallet!`;
           const replyText = `@${recipientUsername} pay from @${senderUsername} ${tipText} You will see it when you create an account on pourboire.tips. Tx: https://solscan.io/tx/${sig}`;
-          const replyId = await postTweet(replyText, t.id);
+          const replyId = await postTweet(replyText, t.id ? String(t.id) : undefined);
           if (!replyId) {
-            console.error(`Failed to post reply to tweet ${t.id}`);
+            console.error(`Failed to post reply to tweet ${t.id}. Tweet ID type: ${typeof t.id}, Value: ${t.id}`);
           }
           
         } catch (e: any) {
@@ -308,9 +315,9 @@ export async function POST(req: NextRequest) {
             await recipient.save();
           }
           const message = `@${recipientUsername} pay from @${senderUsername} ${tips.length === 1 ? `A ${totalAmount} ${token} tip` : `${tips.length} tips totaling ${totalAmount} ${token}`} ${tips.length === 1 ? 'has' : 'have'} been recorded for you! Claim ${tips.length === 1 ? 'it' : 'them'} to receive the Solscan link:`;
-          const replyId = await postTweet(message, t.id);
+          const replyId = await postTweet(message, t.id ? String(t.id) : undefined);
           if (!replyId) {
-            console.error(`Failed to post reply to tweet ${t.id} (transfer failed)`);
+            console.error(`Failed to post reply to tweet ${t.id} (transfer failed). Tweet ID type: ${typeof t.id}, Value: ${t.id}`);
           }
         }
       } else {
@@ -338,9 +345,9 @@ export async function POST(req: NextRequest) {
         // Format: "@recipient pay from @sender A X SOL tip has been recorded for you! Claim it to receive the Solscan link:"
         // Note: Sender must sign up on pourboire.tips first to fund their wallet before the tip can be sent
         const message = `@${recipientUsername} pay from @${senderUsername} ${tips.length === 1 ? `A ${totalAmount} ${token} tip` : `${tips.length} tips totaling ${totalAmount} ${token}`} ${tips.length === 1 ? 'has' : 'have'} been recorded for you! The sender needs to sign up on pourboire.tips first. Claim ${tips.length === 1 ? 'it' : 'them'} to receive the Solscan link:`;
-        const replyId = await postTweet(message, t.id);
+        const replyId = await postTweet(message, t.id ? String(t.id) : undefined);
         if (!replyId) {
-          console.error(`Failed to post reply to tweet ${t.id} (sender not registered)`);
+          console.error(`Failed to post reply to tweet ${t.id} (sender not registered). Tweet ID type: ${typeof t.id}, Value: ${t.id}`);
         }
       }
 

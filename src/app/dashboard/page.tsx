@@ -844,6 +844,11 @@ export default function Dashboard() {
             <p className="text-white/70 text-sm mb-4">
               Transfer SOL from your custodial tip wallet to another address
             </p>
+            <div className="mb-4 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+              <p className="text-yellow-400/90 text-xs">
+                ⚠️ Remember to leave a small amount of SOL (~0.001 SOL) in your tip wallet for transaction fees
+              </p>
+            </div>
             
             <div className="space-y-4">
               <div>
