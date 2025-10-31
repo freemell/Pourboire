@@ -6,7 +6,7 @@ export default function Home() {
     <div className="w-screen min-h-screen flex flex-col relative">
               <Hero
                 title="Tip anyone on X with Solana"
-                description="Send instant SOL/USDC tips to any X post with @Pourboire. Zero fees, instant payments, and auto-pay features powered by x402."
+                description="Send instant SOL/USDC tips to any X post with @Pourboireonsol. Zero fees, instant payments, and auto-pay features powered by x402."
                 badgeText="Solana Payments"
                 badgeLabel="Live"
                 ctaButtons={[

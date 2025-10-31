@@ -43,6 +43,21 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "WebSite",
+              "name": "Pourboire",
+              "description": "Send instant SOL/USDC tips to any X post with @Pourboireonsol. Zero fees, instant payments, and auto-pay features powered by x402.",
+              "url": "https://pourboire.tips/",
+              "sameAs": ["https://x.com/Pourboireonsol"]
+            })
+          }}
+        />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
