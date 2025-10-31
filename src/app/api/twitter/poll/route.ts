@@ -282,7 +282,11 @@ export async function POST(req: NextRequest) {
           const tipText = tips.length === 1 
             ? `A ${totalAmount} ${token} tip has been sent to your wallet!`
             : `${tips.length} tips totaling ${totalAmount} ${token} have been sent to your wallet!`;
-          await postTweet(`@${recipientUsername} pay from @${senderUsername} ${tipText} You will see it when you create an account on pourboire.tips. Tx: https://solscan.io/tx/${sig}`, t.id);
+          const replyText = `@${recipientUsername} pay from @${senderUsername} ${tipText} You will see it when you create an account on pourboire.tips. Tx: https://solscan.io/tx/${sig}`;
+          const replyId = await postTweet(replyText, t.id);
+          if (!replyId) {
+            console.error(`Failed to post reply to tweet ${t.id}`);
+          }
           
         } catch (e: any) {
           console.error('Failed to send batched tip on-chain:', e);
@@ -304,7 +308,10 @@ export async function POST(req: NextRequest) {
             await recipient.save();
           }
           const message = `@${recipientUsername} pay from @${senderUsername} ${tips.length === 1 ? `A ${totalAmount} ${token} tip` : `${tips.length} tips totaling ${totalAmount} ${token}`} ${tips.length === 1 ? 'has' : 'have'} been recorded for you! Claim ${tips.length === 1 ? 'it' : 'them'} to receive the Solscan link:`;
-          await postTweet(message, t.id);
+          const replyId = await postTweet(message, t.id);
+          if (!replyId) {
+            console.error(`Failed to post reply to tweet ${t.id} (transfer failed)`);
+          }
         }
       } else {
         // Sender not registered - can't transfer yet (no sender wallet)
@@ -331,7 +338,10 @@ export async function POST(req: NextRequest) {
         // Format: "@recipient pay from @sender A X SOL tip has been recorded for you! Claim it to receive the Solscan link:"
         // Note: Sender must sign up on pourboire.tips first to fund their wallet before the tip can be sent
         const message = `@${recipientUsername} pay from @${senderUsername} ${tips.length === 1 ? `A ${totalAmount} ${token} tip` : `${tips.length} tips totaling ${totalAmount} ${token}`} ${tips.length === 1 ? 'has' : 'have'} been recorded for you! The sender needs to sign up on pourboire.tips first. Claim ${tips.length === 1 ? 'it' : 'them'} to receive the Solscan link:`;
-        await postTweet(message, t.id);
+        const replyId = await postTweet(message, t.id);
+        if (!replyId) {
+          console.error(`Failed to post reply to tweet ${t.id} (sender not registered)`);
+        }
       }
 
       processed += tips.length; // Count all tips in the batch

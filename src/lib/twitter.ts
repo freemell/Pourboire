@@ -80,17 +80,45 @@ export async function postTweet(text: string, replyToTweetId?: string): Promise<
   try {
     const { client } = getTwitterClient();
     
-    const tweetOptions: any = { text };
+    if (!client) {
+      console.error('Twitter client not initialized');
+      return null;
+    }
+    
+    const tweetOptions: any = { 
+      text: text.substring(0, 280) // Ensure text is within Twitter's limit
+    };
+    
     if (replyToTweetId) {
       tweetOptions.reply = {
         in_reply_to_tweet_id: replyToTweetId
       };
     }
     
+    console.log('Posting tweet:', { text: tweetOptions.text, replyToTweetId, hasReply: !!replyToTweetId });
+    
     const tweet = await client.v2.tweet(tweetOptions);
-    return tweet.data.id;
-  } catch (error) {
-    console.error('Error posting tweet:', error);
+    
+    if (tweet?.data?.id) {
+      console.log('Tweet posted successfully:', tweet.data.id);
+      return tweet.data.id;
+    } else {
+      console.error('Tweet posted but no ID returned:', tweet);
+      return null;
+    }
+  } catch (error: any) {
+    console.error('Error posting tweet:', {
+      message: error?.message,
+      code: error?.code,
+      data: error?.data,
+      stack: error?.stack
+    });
+    
+    // Log full error details for debugging
+    if (error?.data) {
+      console.error('Twitter API error details:', JSON.stringify(error.data, null, 2));
+    }
+    
     return null;
   }
 }

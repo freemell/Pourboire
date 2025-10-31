@@ -68,7 +68,10 @@ export async function POST(request: NextRequest) {
     try {
       if (pendingClaim.fromTx && !pendingClaim.fromTx.startsWith('https://')) {
         // If fromTx is a tweet ID (not a URL), reply to it
-        await postTweet(`@${username} has claimed their tip after signing up on pourboire.tips`, pendingClaim.fromTx);
+        const replyId = await postTweet(`@${username} has claimed their tip after signing up on pourboire.tips`, pendingClaim.fromTx);
+        if (!replyId) {
+          console.error(`Failed to post claim tweet reply to ${pendingClaim.fromTx}`);
+        }
       }
     } catch (e) {
       console.error('Failed to post claim tweet:', e);
