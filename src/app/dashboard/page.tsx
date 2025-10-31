@@ -102,29 +102,25 @@ export default function Dashboard() {
         })
       });
       if (!res.ok) {
-        console.error('ensure-tip-account failed', await res.text());
-        const fallback = getSolanaAddress(user);
-        if (fallback) {
-          setTipAddress(fallback);
-          await fetchWalletBalance(fallback);
-          await fetchPendingAndHistory(fallback);
-        }
+        const errorText = await res.text();
+        console.error('ensure-tip-account failed:', errorText);
+        // Don't fall back to Privy embedded wallet - we need the custodial wallet
+        // The API should always return a wallet address for registered users
         return;
       }
       const data = await res.json();
       if (data?.walletAddress) {
+        // Always use the custodial wallet from the database, never Privy embedded wallet
         setTipAddress(data.walletAddress);
         await fetchWalletBalance(data.walletAddress);
         await fetchPendingAndHistory(data.walletAddress);
+        console.log('Set tip address from database:', data.walletAddress);
+      } else {
+        console.error('ensure-tip-account returned no walletAddress:', data);
       }
     } catch (e) {
       console.error('ensure-tip-account error', e);
-      const fallback = getSolanaAddress(user);
-      if (fallback) {
-        setTipAddress(fallback);
-        await fetchWalletBalance(fallback);
-        await fetchPendingAndHistory(fallback);
-      }
+      // Don't fall back to Privy embedded wallet - we need the custodial wallet
     }
   };
 
