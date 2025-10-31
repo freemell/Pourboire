@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
 
       // Check if recipient is already signed up (has account in DB)
       let recipient = await User.findOne({ handle: recipientHandle });
-      const recipientExists = !!recipient && !!recipient.walletAddress;
+      let recipientExists = !!recipient && !!recipient.walletAddress;
 
       // Check if sender is registered (has custodial wallet)
       const sender = await User.findOne({ handle: senderHandle });
@@ -203,7 +203,7 @@ export async function POST(req: NextRequest) {
 
           // Remove from pending claims if it exists
           recipient.pendingClaims = recipient.pendingClaims.filter(
-            p => !(p.fromTx === t.id && p.sender === senderHandle)
+            (p: any) => !(p.fromTx === t.id && p.sender === senderHandle)
           );
 
           await sender.save();
