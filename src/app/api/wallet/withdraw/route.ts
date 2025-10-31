@@ -96,83 +96,48 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
-    // Create and send transaction with retry logic for expired blockhash
-    let sig: string | null = null;
-    let lastError: any;
-    const maxRetries = 3;
-    
-    for (let attempt = 0; attempt < maxRetries; attempt++) {
-      try {
-        // Get fresh blockhash right before sending
-        const blockhashData = await conn.getLatestBlockhash('confirmed');
-        
-        // Create transaction
-        const tx = new Transaction({
-          feePayer: walletKeypair.publicKey,
-          blockhash: blockhashData.blockhash,
-          lastValidBlockHeight: blockhashData.lastValidBlockHeight
-        }).add(
-          SystemProgram.transfer({
-            fromPubkey: walletKeypair.publicKey,
-            toPubkey: recipientPubkey,
-            lamports: requestedLamports
-          })
-        );
+    // Create and send transaction using sendTransaction which handles blockhash automatically
+    let sig: string;
+    try {
+      // Create transaction (don't set blockhash, let sendTransaction handle it)
+      const tx = new Transaction().add(
+        SystemProgram.transfer({
+          fromPubkey: walletKeypair.publicKey,
+          toPubkey: recipientPubkey,
+          lamports: requestedLamports
+        })
+      );
 
-        // Sign transaction
-        tx.sign(walletKeypair);
-        
-        // Send transaction
-        sig = await conn.sendRawTransaction(tx.serialize(), { 
-          skipPreflight: false,
-          maxRetries: 3 
-        });
-        
-        // If we get here, transaction was sent successfully
-        lastError = null;
-        break;
-      } catch (e: any) {
-        lastError = e;
-        const errorMsg = e?.message || String(e);
-        
-        // Check if it's a blockhash expired error
-        if (errorMsg.includes('Blockhash not found') || 
-            errorMsg.includes('blockhash') || 
-            errorMsg.includes('expired')) {
-          console.error(`Attempt ${attempt + 1} failed with blockhash error, retrying...`, errorMsg);
-          // Wait a bit before retry
-          if (attempt < maxRetries - 1) {
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            continue;
-          }
-        }
-        
-        // For other errors or final retry, throw
-        console.error('Error creating/sending transaction:', errorMsg);
-        if (typeof e?.getLogs === 'function') {
-          try {
-            const logs = await e.getLogs();
-            console.error('Transaction simulation logs:', logs);
-            return NextResponse.json({ 
-              error: 'Failed to create or send transaction', 
-              details: errorMsg,
-              logs: logs
-            }, { status: 500 });
-          } catch {}
-        }
-        return NextResponse.json({ 
-          error: 'Failed to create or send transaction', 
-          details: errorMsg
-        }, { status: 500 });
+      // Sign transaction
+      tx.sign(walletKeypair);
+      
+      // Use sendTransaction which automatically fetches fresh blockhash
+      // This is more reliable than sendRawTransaction with manual blockhash
+      sig = await conn.sendTransaction(tx, [walletKeypair], {
+        skipPreflight: false,
+        maxRetries: 5,
+        preflightCommitment: 'confirmed'
+      });
+      
+    } catch (e: any) {
+      const errorMsg = e?.message || String(e);
+      console.error('Error creating/sending transaction:', errorMsg);
+      
+      // Try to get detailed error logs
+      if (typeof e?.getLogs === 'function') {
+        try {
+          const logs = await e.getLogs();
+          console.error('Transaction simulation logs:', logs);
+          return NextResponse.json({ 
+            error: 'Failed to create or send transaction', 
+            details: errorMsg,
+            logs: logs
+          }, { status: 500 });
+        } catch {}
       }
-    }
-    
-    // If all retries failed or sig is null
-    if (!sig || lastError) {
-      const errorMsg = lastError?.message || String(lastError) || 'Transaction failed to send';
-      console.error('Failed after all retries:', errorMsg);
+      
       return NextResponse.json({ 
-        error: 'Failed to create or send transaction after retries', 
+        error: 'Failed to create or send transaction', 
         details: errorMsg
       }, { status: 500 });
     }

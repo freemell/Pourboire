@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Connection, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import { getAccount, getMint } from '@solana/spl-token';
 
-const connection = new Connection(process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://api.devnet.solana.com');
+// Create connection per request to use fresh RPC URL
+function getConnection() {
+  return new Connection(process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com');
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -17,9 +20,10 @@ export async function GET(request: NextRequest) {
     }
 
     const publicKey = new PublicKey(walletAddress);
+    const connection = getConnection();
     
     // Get SOL balance
-    const solBalance = await connection.getBalance(publicKey);
+    const solBalance = await connection.getBalance(publicKey, 'confirmed');
     const solBalanceFormatted = solBalance / LAMPORTS_PER_SOL;
 
     // Get token accounts (for USDC and other SPL tokens)
