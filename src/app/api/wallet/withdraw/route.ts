@@ -100,9 +100,10 @@ export async function POST(req: NextRequest) {
     let sig: string;
     try {
       // Get fresh blockhash right before creating transaction
-      const { blockhash, lastValidBlockHeight } = await conn.getLatestBlockhash('confirmed');
+      // Use 'finalized' for longer validity, but fetch right before use
+      const { blockhash, lastValidBlockHeight } = await conn.getLatestBlockhash('finalized');
       
-      // Create transaction with blockhash
+      // Create transaction with blockhash immediately
       const tx = new Transaction({
         feePayer: walletKeypair.publicKey,
         blockhash: blockhash,
@@ -118,9 +119,13 @@ export async function POST(req: NextRequest) {
       // Sign transaction
       tx.sign(walletKeypair);
       
-      // Send transaction immediately while blockhash is still valid
-      sig = await conn.sendRawTransaction(tx.serialize(), {
-        skipPreflight: false,
+      // Serialize immediately
+      const serializedTx = tx.serialize();
+      
+      // Send transaction with preflight disabled (we've already validated balance)
+      // This avoids blockhash expiry during simulation
+      sig = await conn.sendRawTransaction(serializedTx, {
+        skipPreflight: true,  // Skip simulation to avoid blockhash expiry
         maxRetries: 5
       });
       
