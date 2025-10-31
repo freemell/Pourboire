@@ -96,11 +96,18 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
-    // Create and send transaction using sendTransaction which handles blockhash automatically
+    // Create and send transaction with fresh blockhash
     let sig: string;
     try {
-      // Create transaction (don't set blockhash, let sendTransaction handle it)
-      const tx = new Transaction().add(
+      // Get fresh blockhash right before creating transaction
+      const { blockhash, lastValidBlockHeight } = await conn.getLatestBlockhash('confirmed');
+      
+      // Create transaction with blockhash
+      const tx = new Transaction({
+        feePayer: walletKeypair.publicKey,
+        blockhash: blockhash,
+        lastValidBlockHeight: lastValidBlockHeight
+      }).add(
         SystemProgram.transfer({
           fromPubkey: walletKeypair.publicKey,
           toPubkey: recipientPubkey,
@@ -111,12 +118,10 @@ export async function POST(req: NextRequest) {
       // Sign transaction
       tx.sign(walletKeypair);
       
-      // Use sendTransaction which automatically fetches fresh blockhash
-      // This is more reliable than sendRawTransaction with manual blockhash
-      sig = await conn.sendTransaction(tx, [walletKeypair], {
+      // Send transaction immediately while blockhash is still valid
+      sig = await conn.sendRawTransaction(tx.serialize(), {
         skipPreflight: false,
-        maxRetries: 5,
-        preflightCommitment: 'confirmed'
+        maxRetries: 5
       });
       
     } catch (e: any) {

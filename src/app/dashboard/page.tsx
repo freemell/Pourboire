@@ -39,8 +39,29 @@ export default function Dashboard() {
   const [withdrawAmount, setWithdrawAmount] = useState<string>("");
   const [withdrawAddress, setWithdrawAddress] = useState<string>("");
   const [withdrawing, setWithdrawing] = useState(false);
+  const [solPrice, setSolPrice] = useState<number>(150); // Default to $150 if fetch fails
   const { publicKey, signTransaction, sendTransaction, connected } = useWallet();
   const rpcEndpoint = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
+
+  // Fetch SOL price from CoinGecko
+  useEffect(() => {
+    const fetchSolPrice = async () => {
+      try {
+        const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd');
+        const data = await response.json();
+        if (data?.solana?.usd) {
+          setSolPrice(data.solana.usd);
+        }
+      } catch (error) {
+        console.error('Failed to fetch SOL price, using default:', error);
+        // Keep default price
+      }
+    };
+    fetchSolPrice();
+    // Refresh price every 5 minutes
+    const interval = setInterval(fetchSolPrice, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const getSolanaAddress = (u: any): string | null => {
     if (!u) return null;
@@ -354,7 +375,7 @@ export default function Dashboard() {
                     {loading ? '...' : `${balance.toFixed(4)} SOL`}
                   </div>
                   <p className="text-white/70 mt-2 font-light">
-                    ≈ ${(balance * 100).toFixed(2)} USD
+                    ≈ ${(balance * solPrice).toFixed(2)} USD
                   </p>
                   <p className="text-xs text-white/50 mt-1 font-light">
                     Auto-created wallet for receiving tips
