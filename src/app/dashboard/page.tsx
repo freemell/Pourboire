@@ -85,8 +85,21 @@ export default function Dashboard() {
 
   const ensureTipAccount = async (handle: string) => {
     try {
+      // Get Twitter ID from user's linked accounts if available
+      const twitterAccount = user?.linkedAccounts?.find((a: any) => a.type === 'twitter_oauth') as any;
+      const twitterId = twitterAccount?.subject || twitterAccount?.providerId || undefined;
+      
+      // Also try to use wallet address if we have it (fallback for finding existing user)
+      const existingWallet = getSolanaAddress(user);
+      
       const res = await fetch('/api/wallet/ensure-tip-account', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ handle })
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify({ 
+          handle,
+          twitterId,
+          walletAddress: existingWallet || undefined
+        })
       });
       if (!res.ok) {
         console.error('ensure-tip-account failed', await res.text());

@@ -7,16 +7,37 @@ import { encryptPrivateKey } from '@/lib/crypto';
 export async function POST(req: NextRequest) {
   try {
     await connectDB();
-    const { handle, twitterId } = await req.json();
+    const { handle, twitterId, walletAddress } = await req.json();
+    
+    // If wallet address is provided, try to find user by wallet first
+    // This handles cases where handle might not match but wallet address does
+    if (walletAddress) {
+      const userByWallet = await User.findOne({ walletAddress });
+      if (userByWallet && userByWallet.encryptedPrivateKey) {
+        console.log(`Found user by wallet ${walletAddress}: handle=${userByWallet.handle}, twitterId=${userByWallet.twitterId}`);
+        return NextResponse.json({ success: true, walletAddress: userByWallet.walletAddress, created: false, foundByWallet: true });
+      }
+    }
+    
     if (!handle) {
-      return NextResponse.json({ error: 'handle required' }, { status: 400 });
+      return NextResponse.json({ error: 'handle or walletAddress required' }, { status: 400 });
     }
 
     // Normalize handle to always include leading @
     const normalizedHandle = handle.startsWith('@') ? handle : `@${handle}`;
 
-    // Try to find user by handle
+    // Try to find user by handle (with and without @)
     let user = await User.findOne({ handle: normalizedHandle });
+    
+    // If not found, try without @ prefix
+    if (!user) {
+      user = await User.findOne({ handle: normalizedHandle.replace(/^@/, '') });
+    }
+    
+    // If still not found and we have twitterId, try by twitterId
+    if (!user && twitterId) {
+      user = await User.findOne({ twitterId });
+    }
 
     // If user exists and has a wallet (may have been created during Twitter poll for non-users), use it
     // This assigns the pre-created wallet to the user when they sign up

@@ -81,13 +81,31 @@ export async function POST(req: NextRequest) {
       const recipientUsername = recipientHandle.replace(/^@/, '');
       const senderUsername = senderHandle.replace(/^@/, '');
 
+      console.log(`Processing tip: sender=${senderHandle}, recipient=${recipientHandle}, amount=${parsed.amount} ${parsed.token}`);
+
       // Check if recipient exists (already signed up) or is new (needs wallet created)
       let recipient = await User.findOne({ handle: recipientHandle });
       const recipientIsExistingUser = !!recipient && !!recipient.walletAddress && !!recipient.encryptedPrivateKey;
       
       // Check if sender is registered (has custodial wallet)
-      const sender = await User.findOne({ handle: senderHandle });
+      // Look up sender by handle (normalized with @)
+      const normalizedSenderHandle = senderHandle.startsWith('@') ? senderHandle : `@${senderHandle}`;
+      let sender = await User.findOne({ handle: normalizedSenderHandle });
+      
+      // If not found by handle, try without @ prefix
+      if (!sender) {
+        const handleWithoutAt = normalizedSenderHandle.replace(/^@/, '');
+        sender = await User.findOne({ handle: { $in: [handleWithoutAt, `@${handleWithoutAt}`] } });
+      }
+      
+      // Also try to find by Twitter ID if we have the author_id
+      if (!sender && t.author_id) {
+        sender = await User.findOne({ twitterId: t.author_id });
+      }
+      
       const senderIsRegistered = !!sender && !!sender.encryptedPrivateKey && !!sender.walletAddress;
+      
+      console.log(`Sender check: handle=${normalizedSenderHandle}, author_id=${t.author_id}, found=${!!sender}, registered=${senderIsRegistered}, wallet=${sender?.walletAddress || 'N/A'}`);
 
       // Only create wallet for non-existing users (don't create new wallet for existing users)
       if (!recipient || !recipient.walletAddress || !recipient.encryptedPrivateKey) {
@@ -226,24 +244,27 @@ export async function POST(req: NextRequest) {
         }
       } else {
         // Sender not registered - can't transfer yet (no sender wallet)
+        // Sender needs to sign up on pourboire.tips first to create a custodial wallet
         // Generate recipient wallet and record pending claim
-        // When sender signs up, they can then send the tip
+        // When sender signs up and funds their wallet, they can claim and send the tip
+        console.log(`Sender ${normalizedSenderHandle} not registered - recording pending claim`);
         if (recipient) {
           const existingClaim = recipient.pendingClaims.find(
-            (p: any) => p.fromTx === t.id && p.sender === senderHandle
+            (p: any) => p.fromTx === t.id && p.sender === normalizedSenderHandle
           );
           if (!existingClaim) {
             recipient.pendingClaims.push({
               amount: parsed.amount,
               token: parsed.token,
               fromTx: t.id,
-              sender: senderHandle
+              sender: normalizedSenderHandle
             });
             await recipient.save();
           }
         }
         // Format: "@recipient pay from @sender A X SOL tip has been recorded for you! Claim it to receive the Solscan link:"
-        const message = `@${recipientUsername} pay from @${senderUsername} A ${parsed.amount} ${parsed.token} tip has been recorded for you! Claim it to receive the Solscan link:`;
+        // Note: Sender must sign up on pourboire.tips first to fund their wallet before the tip can be sent
+        const message = `@${recipientUsername} pay from @${senderUsername} A ${parsed.amount} ${parsed.token} tip has been recorded for you! The sender needs to sign up on pourboire.tips first. Claim it to receive the Solscan link:`;
         await postTweet(message, t.id);
       }
 
