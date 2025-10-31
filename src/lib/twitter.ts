@@ -76,11 +76,18 @@ export async function getUserProfile(userId: string): Promise<TwitterUser | null
   }
 }
 
-export async function postTweet(text: string): Promise<string | null> {
+export async function postTweet(text: string, replyToTweetId?: string): Promise<string | null> {
   try {
     const { client } = getTwitterClient();
     
-    const tweet = await client.v2.tweet(text);
+    const tweetOptions: any = { text };
+    if (replyToTweetId) {
+      tweetOptions.reply = {
+        in_reply_to_tweet_id: replyToTweetId
+      };
+    }
+    
+    const tweet = await client.v2.tweet(tweetOptions);
     return tweet.data.id;
   } catch (error) {
     console.error('Error posting tweet:', error);
@@ -94,14 +101,35 @@ export async function searchMentions(query: string, sinceId?: string): Promise<a
     const res: any = await bearerClient.v2.search(query, {
       'tweet.fields': ['id', 'text', 'author_id', 'created_at', 'public_metrics'],
       'user.fields': ['id', 'username', 'name'],
+      expansions: ['author_id'],
       max_results: 50,
       since_id: sinceId,
     });
-    // twitter-api-v2 returns a paginator; normalize to array of tweets
-    if (Array.isArray(res?.data)) return res.data;
-    if (Array.isArray(res?.tweets)) return res.tweets;
-    if (Array.isArray(res?.data?.data)) return res.data.data;
-    return [];
+    // twitter-api-v2 returns paginator with data and includes; merge author info
+    let tweets: any[] = [];
+    if (Array.isArray(res?.data)) {
+      tweets = res.data;
+    } else if (Array.isArray(res?.data?.data)) {
+      tweets = res.data.data;
+    } else if (Array.isArray(res?.tweets)) {
+      tweets = res.tweets;
+    }
+    
+    // Attach author info from includes
+    if (tweets.length && res?.includes?.users) {
+      const userMap: Record<string, any> = {};
+      for (const u of res.includes.users) {
+        userMap[u.id] = u;
+      }
+      for (const t of tweets) {
+        if (t.author_id && userMap[t.author_id]) {
+          t.author = userMap[t.author_id];
+          t.username = userMap[t.author_id].username;
+        }
+      }
+    }
+    
+    return tweets;
   } catch (error) {
     console.error('Error searching mentions:', error);
     return [];

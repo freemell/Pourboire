@@ -35,6 +35,10 @@ export default function Dashboard() {
   const [showFund, setShowFund] = useState(false);
   const [copied, setCopied] = useState(false);
   const [fundAmount, setFundAmount] = useState<string>("");
+  const [showWithdraw, setShowWithdraw] = useState(false);
+  const [withdrawAmount, setWithdrawAmount] = useState<string>("");
+  const [withdrawAddress, setWithdrawAddress] = useState<string>("");
+  const [withdrawing, setWithdrawing] = useState(false);
   const { publicKey, signTransaction, sendTransaction, connected } = useWallet();
   const rpcEndpoint = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
 
@@ -618,6 +622,15 @@ export default function Dashboard() {
                   <h4 className="font-light mb-4">Wallet Tools</h4>
                   <div className="space-y-3">
                     <button
+                      onClick={() => setShowWithdraw(true)}
+                      className="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg transition-colors font-light tracking-tight w-full"
+                    >
+                      Withdraw SOL from Tip Wallet
+                    </button>
+                    <div className="text-xs text-white/60 mb-3">
+                      Transfer SOL from your tip wallet to another address
+                    </div>
+                    <button
                       onClick={async () => {
                         try {
                           if (!userData?.handle) return;
@@ -649,7 +662,7 @@ export default function Dashboard() {
                           alert('Export failed');
                         }
                       }}
-                      className="bg-red-500/90 hover:bg-red-600 text-white py-2 px-4 rounded-lg transition-colors font-light tracking-tight"
+                      className="bg-red-500/90 hover:bg-red-600 text-white py-2 px-4 rounded-lg transition-colors font-light tracking-tight w-full"
                     >
                       Export Custodial Wallet (Dev only)
                     </button>
@@ -781,6 +794,119 @@ export default function Dashboard() {
               )}
             </div>
             
+          </div>
+        </div>
+      )}
+      {showWithdraw && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-6 w-full max-w-md text-white">
+            <h3 className="text-xl font-extralight mb-2">Withdraw SOL from Tip Wallet</h3>
+            <p className="text-white/70 text-sm mb-4">
+              Transfer SOL from your custodial tip wallet to another address
+            </p>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm text-white/70 mb-1 block">Amount (SOL)</label>
+                <input
+                  value={withdrawAmount}
+                  onChange={(e) => setWithdrawAmount(e.target.value)}
+                  placeholder="e.g. 0.5"
+                  className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 outline-none"
+                  disabled={withdrawing}
+                />
+              </div>
+              
+              <div>
+                <label className="text-sm text-white/70 mb-1 block">Recipient Address</label>
+                <input
+                  value={withdrawAddress}
+                  onChange={(e) => setWithdrawAddress(e.target.value)}
+                  placeholder="Enter Solana address"
+                  className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 outline-none font-mono text-sm"
+                  disabled={withdrawing}
+                />
+                {connected && publicKey && (
+                  <button
+                    onClick={() => setWithdrawAddress(publicKey.toString())}
+                    className="mt-2 text-xs text-blue-400 hover:text-blue-300"
+                    disabled={withdrawing}
+                  >
+                    Use Connected Wallet
+                  </button>
+                )}
+              </div>
+              
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowWithdraw(false);
+                    setWithdrawAmount("");
+                    setWithdrawAddress("");
+                  }}
+                  className="flex-1 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
+                  disabled={withdrawing}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={async () => {
+                    if (!userData?.handle || !withdrawAmount || !withdrawAddress) {
+                      alert('Please fill in all fields');
+                      return;
+                    }
+                    
+                    setWithdrawing(true);
+                    try {
+                      const res = await fetch('/api/wallet/withdraw', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          handle: userData.handle,
+                          amount: withdrawAmount,
+                          toAddress: withdrawAddress
+                        })
+                      });
+                      
+                      const data = await res.json();
+                      
+                      if (!res.ok) {
+                        alert(data.error || 'Withdrawal failed');
+                        return;
+                      }
+                      
+                      alert(`Withdrawal successful! Tx: ${data.txHash}\n\nView on Solscan: ${data.solscanUrl}`);
+                      
+                      // Refresh balance and history
+                      if (tipAddress) {
+                        await fetchWalletBalance(tipAddress);
+                        await fetchPendingAndHistory(tipAddress);
+                      }
+                      
+                      setShowWithdraw(false);
+                      setWithdrawAmount("");
+                      setWithdrawAddress("");
+                    } catch (e: any) {
+                      console.error('withdraw error', e);
+                      alert(e?.message || 'Withdrawal failed');
+                    } finally {
+                      setWithdrawing(false);
+                    }
+                  }}
+                  className="flex-1 px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-lg transition-colors disabled:opacity-50"
+                  disabled={withdrawing || !withdrawAmount || !withdrawAddress}
+                >
+                  {withdrawing ? 'Processing...' : 'Withdraw'}
+                </button>
+              </div>
+              
+              {tipAddress && (
+                <div className="mt-4 p-3 bg-black/40 rounded-lg">
+                  <div className="text-xs text-white/70 mb-1">Tip Wallet Balance</div>
+                  <div className="text-sm font-mono">{balance.toFixed(4)} SOL</div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
