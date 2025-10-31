@@ -20,17 +20,29 @@ export async function POST(req: NextRequest) {
     const userHandle = norm(handle);
 
     // Find user with custodial wallet
-    const user = await User.findOne({ handle: userHandle });
-    if (!user || !user.encryptedPrivateKey || !user.walletAddress) {
-      return NextResponse.json({ error: 'User not found or no custodial wallet' }, { status: 404 });
+    let user;
+    try {
+      user = await User.findOne({ handle: userHandle });
+      if (!user) {
+        return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      }
+      if (!user.encryptedPrivateKey) {
+        return NextResponse.json({ error: 'User has no custodial wallet private key' }, { status: 404 });
+      }
+      if (!user.walletAddress) {
+        return NextResponse.json({ error: 'User has no wallet address' }, { status: 404 });
+      }
+    } catch (e: any) {
+      console.error('Error finding user:', e?.message);
+      return NextResponse.json({ error: 'Database error while finding user', details: e?.message }, { status: 500 });
     }
 
     // Validate recipient address
     let recipientPubkey: PublicKey;
     try {
       recipientPubkey = new PublicKey(toAddress);
-    } catch {
-      return NextResponse.json({ error: 'Invalid recipient address' }, { status: 400 });
+    } catch (e: any) {
+      return NextResponse.json({ error: 'Invalid recipient address', details: e?.message }, { status: 400 });
     }
 
     // Validate amount
@@ -40,13 +52,40 @@ export async function POST(req: NextRequest) {
     }
 
     // Decrypt private key
-    const privateKeyBytes = decryptPrivateKey(user.encryptedPrivateKey);
-    const walletKeypair = Keypair.fromSecretKey(privateKeyBytes);
+    let privateKeyBytes: Uint8Array;
+    let walletKeypair: Keypair;
+    try {
+      if (!process.env.ENCRYPTION_KEY) {
+        throw new Error('ENCRYPTION_KEY environment variable is not set');
+      }
+      privateKeyBytes = decryptPrivateKey(user.encryptedPrivateKey);
+      if (!privateKeyBytes || privateKeyBytes.length !== 64) {
+        throw new Error(`Invalid decrypted key length: ${privateKeyBytes?.length}, expected 64`);
+      }
+      walletKeypair = Keypair.fromSecretKey(privateKeyBytes);
+    } catch (e: any) {
+      console.error('Error decrypting private key:', e?.message);
+      return NextResponse.json({ 
+        error: 'Failed to decrypt private key', 
+        details: e?.message 
+      }, { status: 500 });
+    }
 
     // Get balance
-    const rpc = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
-    const conn = new Connection(rpc);
-    const balance = await conn.getBalance(walletKeypair.publicKey);
+    let balance: number;
+    let conn: Connection;
+    try {
+      const rpc = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
+      conn = new Connection(rpc);
+      balance = await conn.getBalance(walletKeypair.publicKey);
+    } catch (e: any) {
+      console.error('Error getting balance:', e?.message);
+      return NextResponse.json({ 
+        error: 'Failed to get wallet balance', 
+        details: e?.message 
+      }, { status: 500 });
+    }
+    
     const requestedLamports = Math.floor(amountNum * LAMPORTS_PER_SOL);
     
     // Estimate fee (roughly 5000 lamports)
@@ -58,57 +97,93 @@ export async function POST(req: NextRequest) {
     }
 
     // Get recent blockhash first
-    const { blockhash, lastValidBlockHeight } = await conn.getLatestBlockhash('confirmed');
-    
-    // Create and send transaction
-    const tx = new Transaction({
-      feePayer: walletKeypair.publicKey,
-      blockhash,
-      lastValidBlockHeight
-    }).add(
-      SystemProgram.transfer({
-        fromPubkey: walletKeypair.publicKey,
-        toPubkey: recipientPubkey,
-        lamports: requestedLamports
-      })
-    );
-
-    // Sign and send
-    tx.sign(walletKeypair);
-    const sig = await conn.sendRawTransaction(tx.serialize(), { 
-      skipPreflight: false,
-      maxRetries: 3 
-    });
-
-    // Wait for confirmation with retry logic
-    const startTime = Date.now();
-    while (Date.now() - startTime < 60000) {
-      const status = await conn.getSignatureStatus(sig);
-      if (status?.value?.err) {
-        return NextResponse.json({ error: 'Transaction failed', details: status.value.err }, { status: 500 });
-      }
-      if (status?.value?.confirmationStatus === 'confirmed' || status?.value?.confirmationStatus === 'finalized') {
-        break;
-      }
-      await new Promise(resolve => setTimeout(resolve, 1500));
+    let blockhash: string;
+    let lastValidBlockHeight: number;
+    try {
+      const blockhashData = await conn.getLatestBlockhash('confirmed');
+      blockhash = blockhashData.blockhash;
+      lastValidBlockHeight = blockhashData.lastValidBlockHeight;
+    } catch (e: any) {
+      console.error('Error getting blockhash:', e?.message);
+      return NextResponse.json({ 
+        error: 'Failed to get recent blockhash', 
+        details: e?.message 
+      }, { status: 500 });
     }
     
-    // Verify final status
-    const finalStatus = await conn.getSignatureStatus(sig);
-    if (finalStatus?.value?.err) {
-      return NextResponse.json({ error: 'Transaction failed', details: finalStatus.value.err }, { status: 500 });
+    // Create and send transaction
+    let tx: Transaction;
+    let sig: string;
+    try {
+      tx = new Transaction({
+        feePayer: walletKeypair.publicKey,
+        blockhash,
+        lastValidBlockHeight
+      }).add(
+        SystemProgram.transfer({
+          fromPubkey: walletKeypair.publicKey,
+          toPubkey: recipientPubkey,
+          lamports: requestedLamports
+        })
+      );
+
+      // Sign and send
+      tx.sign(walletKeypair);
+      sig = await conn.sendRawTransaction(tx.serialize(), { 
+        skipPreflight: false,
+        maxRetries: 3 
+      });
+    } catch (e: any) {
+      console.error('Error creating/sending transaction:', e?.message);
+      return NextResponse.json({ 
+        error: 'Failed to create or send transaction', 
+        details: e?.message 
+      }, { status: 500 });
+    }
+
+    // Wait for confirmation with retry logic
+    try {
+      const startTime = Date.now();
+      while (Date.now() - startTime < 60000) {
+        const status = await conn.getSignatureStatus(sig);
+        if (status?.value?.err) {
+          return NextResponse.json({ error: 'Transaction failed', details: status.value.err }, { status: 500 });
+        }
+        if (status?.value?.confirmationStatus === 'confirmed' || status?.value?.confirmationStatus === 'finalized') {
+          break;
+        }
+        await new Promise(resolve => setTimeout(resolve, 1500));
+      }
+      
+      // Verify final status
+      const finalStatus = await conn.getSignatureStatus(sig);
+      if (finalStatus?.value?.err) {
+        return NextResponse.json({ error: 'Transaction failed', details: finalStatus.value.err }, { status: 500 });
+      }
+    } catch (e: any) {
+      console.error('Error confirming transaction:', e?.message);
+      return NextResponse.json({ 
+        error: 'Failed to confirm transaction', 
+        details: e?.message,
+        txHash: sig 
+      }, { status: 500 });
     }
 
     // Record in history
-    user.history.push({
-      type: 'transfer',
-      amount: amountNum,
-      token: 'SOL',
-      counterparty: toAddress,
-      txHash: sig,
-      date: new Date()
-    });
-    await user.save();
+    try {
+      user.history.push({
+        type: 'transfer',
+        amount: amountNum,
+        token: 'SOL',
+        counterparty: toAddress,
+        txHash: sig,
+        date: new Date()
+      });
+      await user.save();
+    } catch (e: any) {
+      console.error('Error saving transaction history:', e?.message);
+      // Don't fail the request if history save fails, but log it
+    }
 
     return NextResponse.json({
       success: true,
@@ -124,11 +199,11 @@ export async function POST(req: NextRequest) {
     const stack = e?.stack || '';
     console.error('wallet/withdraw error', message, stack);
     
-    // Return detailed error in all environments for debugging
+    // Always return error details for debugging (even in production)
     return NextResponse.json({ 
       error: 'Withdrawal failed', 
-      details: process.env.NODE_ENV !== 'production' ? message : 'Please check server logs',
-      fullError: process.env.NODE_ENV !== 'production' ? { message, stack } : undefined
+      details: message,
+      stack: process.env.NODE_ENV !== 'production' ? stack : undefined
     }, { status: 500 });
   }
 }
