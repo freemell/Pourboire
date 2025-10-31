@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Connection, PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL } from '@solana/web3.js';
-import { Keypair } from '@solana/web3.js';
+import { Connection, PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL, Keypair } from '@solana/web3.js';
 import connectDB from '@/lib/mongodb';
 import User, { IPendingClaim } from '@/models/User';
 import { decryptPrivateKey } from '@/lib/crypto';
-
-const connection = new Connection(process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://api.devnet.solana.com');
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,7 +12,7 @@ export async function POST(request: NextRequest) {
     
     if (!userId || !tipId) {
       return NextResponse.json(
-        { error: 'Missing required parameters' },
+        { error: 'Missing required parameters: userId and tipId' },
         { status: 400 }
       );
     }
@@ -38,31 +35,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if user has embedded wallet (can receive funds)
-    if (!user.isEmbedded || !user.walletAddress) {
+    // Check if user has custodial wallet (tips are sent to custodial wallet)
+    if (!user.encryptedPrivateKey || !user.walletAddress) {
       return NextResponse.json(
-        { error: 'User must have an embedded wallet to claim tips' },
+        { error: 'User must have a custodial wallet to claim tips' },
         { status: 400 }
       );
     }
 
-    // For custodial wallets, we need to transfer from the custodial address
-    // For now, we'll simulate the transfer and update the database
-    // In a real implementation, you would:
-    // 1. Get the custodial wallet's private key
-    // 2. Create a transaction to transfer funds to the user's embedded wallet
-    // 3. Sign and send the transaction
+    // The tip is already in the custodial wallet, so "claiming" just means marking it as claimed
+    // If we want to transfer to an embedded wallet, we'd need the embedded wallet address
+    // For now, we'll just mark it as claimed since funds are already in the custodial wallet
 
-    // Mock transaction hash (in real implementation, this would be the actual tx hash)
-    const txHash = `mock_tx_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-    // Add to transaction history
+    // Add to transaction history (the tip was already received, we're just acknowledging it)
     user.history.push({
       type: 'tip',
       amount: pendingClaim.amount,
       token: pendingClaim.token as 'SOL' | 'USDC',
       counterparty: pendingClaim.sender,
-      txHash: txHash,
+      txHash: pendingClaim.fromTx || `claimed_${Date.now()}`,
       date: new Date()
     });
 
@@ -73,12 +64,16 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      txHash: txHash,
+      txHash: pendingClaim.fromTx || `claimed_${Date.now()}`,
       message: 'Tip claimed successfully'
     });
 
-  } catch (error) {
-    console.error('Claim tip error:', error);
+  } catch (e: any) {
+    const message = e?.message || String(e);
+    console.error('Claim tip error:', message);
+    if (process.env.NODE_ENV !== 'production') {
+      return NextResponse.json({ error: message }, { status: 500 });
+    }
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

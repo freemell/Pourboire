@@ -180,20 +180,27 @@ export default function Dashboard() {
 
   const claimTip = async (tipId: string) => {
     try {
-      if (!dbUserId) return;
+      if (!dbUserId) {
+        console.error('Claim failed: User ID not found');
+        return;
+      }
       const res = await fetch('/api/tips/claim', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: dbUserId, tipId })
       });
       const data = await res.json();
+      if (!res.ok) {
+        console.error('Claim failed:', data.error || 'Unknown error');
+        return;
+      }
       if (data.success) {
         setPendingTips(prev => prev.filter(t => (t.id || t._id) !== tipId));
         // refresh history after claim
         const addr = getSolanaAddress(user);
         if (addr) fetchPendingAndHistory(addr);
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error('Claim failed', e);
     }
   };
@@ -419,7 +426,7 @@ export default function Dashboard() {
                       <button 
                         onClick={() => {
                           // This will open a wallet connection modal for sending tips
-                          alert('Connect your wallet to send tips');
+                          console.error('Connect your wallet to send tips');
                         }}
                         className="w-full bg-blue-500 hover:bg-blue-600 text-white py-3 px-4 rounded-lg transition-colors font-light tracking-tight"
                       >
@@ -641,7 +648,7 @@ export default function Dashboard() {
                           });
                           const data = await res.json();
                           if (!res.ok || !data.success) {
-                            alert(data.error || 'Export failed');
+                            console.error('Export failed:', data.error || 'Unknown error');
                             return;
                           }
                           const blob = new Blob([
@@ -659,7 +666,6 @@ export default function Dashboard() {
                           URL.revokeObjectURL(url);
                         } catch (e) {
                           console.error('export error', e);
-                          alert('Export failed');
                         }
                       }}
                       className="bg-red-500/90 hover:bg-red-600 text-white py-2 px-4 rounded-lg transition-colors font-light tracking-tight w-full"
@@ -767,11 +773,12 @@ export default function Dashboard() {
                       } catch (e: any) {
                         const msg = e?.message || String(e);
                         if (msg.includes('403') || msg.toLowerCase().includes('forbidden')) {
-                          alert('Your Solana RPC blocked the request (403). Set NEXT_PUBLIC_SOLANA_RPC_URL to a provider RPC with an API key (e.g. Helius, QuickNode, Triton) and reload.');
+                          console.error('RPC blocked request (403). Set NEXT_PUBLIC_SOLANA_RPC_URL to a provider RPC with an API key (e.g. Helius, QuickNode, Triton) and reload.');
                         }
                         if (msg.toLowerCase().includes('debit') || msg.toLowerCase().includes('insufficient')) {
-                          alert('Your connected wallet needs sufficient SOL to cover network fee and amount. Please top up and try again or use the Deep Link option.');
+                          console.error('Insufficient funds: Connected wallet needs sufficient SOL to cover network fee and amount.');
                         }
+                        console.error('Transfer failed:', msg);
                         if (typeof (e as any)?.getLogs === 'function') {
                           try { console.error('transaction logs', await (e as any).getLogs()); } catch {}
                         }
@@ -852,7 +859,7 @@ export default function Dashboard() {
                 <button
                   onClick={async () => {
                     if (!userData?.handle || !withdrawAmount || !withdrawAddress) {
-                      alert('Please fill in all fields');
+                      console.error('Withdraw: Missing required fields');
                       return;
                     }
                     
@@ -871,11 +878,12 @@ export default function Dashboard() {
                       const data = await res.json();
                       
                       if (!res.ok) {
-                        alert(data.error || 'Withdrawal failed');
+                        const errorMsg = data.details || data.error || 'Withdrawal failed';
+                        console.error('Withdraw failed:', errorMsg);
                         return;
                       }
                       
-                      alert(`Withdrawal successful! Tx: ${data.txHash}\n\nView on Solscan: ${data.solscanUrl}`);
+                      console.log(`Withdrawal successful! Tx: ${data.txHash}\n\nView on Solscan: ${data.solscanUrl}`);
                       
                       // Refresh balance and history
                       if (tipAddress) {
@@ -888,7 +896,6 @@ export default function Dashboard() {
                       setWithdrawAddress("");
                     } catch (e: any) {
                       console.error('withdraw error', e);
-                      alert(e?.message || 'Withdrawal failed');
                     } finally {
                       setWithdrawing(false);
                     }

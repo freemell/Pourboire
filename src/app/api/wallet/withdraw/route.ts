@@ -121,11 +121,15 @@ export async function POST(req: NextRequest) {
 
   } catch (e: any) {
     const message = e?.message || String(e);
-    console.error('wallet/withdraw error', message);
-    if (process.env.NODE_ENV !== 'production') {
-      return NextResponse.json({ error: message }, { status: 500 });
-    }
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    const stack = e?.stack || '';
+    console.error('wallet/withdraw error', message, stack);
+    
+    // Return detailed error in all environments for debugging
+    return NextResponse.json({ 
+      error: 'Withdrawal failed', 
+      details: process.env.NODE_ENV !== 'production' ? message : 'Please check server logs',
+      fullError: process.env.NODE_ENV !== 'production' ? { message, stack } : undefined
+    }, { status: 500 });
   }
 }
 
