@@ -3,6 +3,7 @@ import { Connection, PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL, Ke
 import connectDB from '@/lib/mongodb';
 import User, { IPendingClaim } from '@/models/User';
 import { decryptPrivateKey } from '@/lib/crypto';
+import { postTweet } from '@/lib/twitter';
 
 export async function POST(request: NextRequest) {
   try {
@@ -61,6 +62,18 @@ export async function POST(request: NextRequest) {
     user.pendingClaims = user.pendingClaims.filter((claim: IPendingClaim) => claim._id?.toString() !== tipId);
 
     await user.save();
+
+    // Post tweet about claim (if original tweet ID exists)
+    const username = user.handle.replace(/^@/, '');
+    try {
+      if (pendingClaim.fromTx && !pendingClaim.fromTx.startsWith('https://')) {
+        // If fromTx is a tweet ID (not a URL), reply to it
+        await postTweet(`@${username} has claimed their tip after signing up on pourboire.tips`, pendingClaim.fromTx);
+      }
+    } catch (e) {
+      console.error('Failed to post claim tweet:', e);
+      // Don't fail the claim if tweet posting fails
+    }
 
     return NextResponse.json({
       success: true,

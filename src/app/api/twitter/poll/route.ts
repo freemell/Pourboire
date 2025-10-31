@@ -81,51 +81,40 @@ export async function POST(req: NextRequest) {
       const recipientUsername = recipientHandle.replace(/^@/, '');
       const senderUsername = senderHandle.replace(/^@/, '');
 
-      // Check if recipient is already signed up (has account in DB)
+      // Check if recipient exists (already signed up) or is new (needs wallet created)
       let recipient = await User.findOne({ handle: recipientHandle });
-      let recipientExists = !!recipient && !!recipient.walletAddress;
-
+      const recipientIsExistingUser = !!recipient && !!recipient.walletAddress && !!recipient.encryptedPrivateKey;
+      
       // Check if sender is registered (has custodial wallet)
       const sender = await User.findOne({ handle: senderHandle });
       const senderIsRegistered = !!sender && !!sender.encryptedPrivateKey && !!sender.walletAddress;
 
-      // Ensure recipient has custodial wallet if they exist
-      if (!recipient || !recipient.walletAddress) {
-        // Create recipient via ingest endpoint (this creates custodial wallet)
+      // Only create wallet for non-existing users (don't create new wallet for existing users)
+      if (!recipient || !recipient.walletAddress || !recipient.encryptedPrivateKey) {
+        // Non-existing user - create wallet for them so we can send SOL
         const base = process.env.NEXT_PUBLIC_BASE_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
         try {
-          const ingestRes = await fetch(`${base}/api/tips/ingest`, {
+          const createRes = await fetch(`${base}/api/wallet/create-custodial`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
-              senderHandle, 
-              recipientHandle, 
-              amount: parsed.amount, 
-              token: parsed.token, 
-              tweetId: t.id 
+              handle: recipientHandle,
+              twitterId: `temp_${Date.now()}` // Temporary ID until they sign up
             })
           });
           
           // Refresh recipient after creation
-          if (ingestRes.ok) {
+          if (createRes.ok) {
             recipient = await User.findOne({ handle: recipientHandle });
-            recipientExists = !!recipient && !!recipient.walletAddress;
           }
         } catch (e) {
-          console.error('Failed to ingest tip:', e);
+          console.error('Failed to create recipient wallet:', e);
         }
-      } else {
-        // Recipient exists, record the pending claim (will be removed if transaction succeeds)
-        recipient.pendingClaims.push({
-          amount: parsed.amount,
-          token: parsed.token,
-          fromTx: t.id,
-          sender: senderHandle
-        });
-        await recipient.save();
       }
 
-      // If sender is registered AND recipient has wallet, perform actual transaction
+      // Always attempt transfer if sender is registered and recipient has wallet
+      // If sender is not registered, we can't transfer yet (no sender wallet)
+      // But we still generate recipient wallet and record pending claim
       if (senderIsRegistered && recipient && recipient.walletAddress && parsed.token === 'SOL') {
         try {
           // Decrypt sender's private key
@@ -157,10 +146,10 @@ export async function POST(req: NextRequest) {
             })
           );
 
-          // Sign and send
+          // Sign and send with skipPreflight to avoid blockhash expiry
           tx.sign(kp);
           const sig = await conn.sendRawTransaction(tx.serialize(), {
-            skipPreflight: false,
+            skipPreflight: true,  // Skip preflight since we've validated balance
             maxRetries: 3
           });
 
@@ -209,32 +198,52 @@ export async function POST(req: NextRequest) {
           await sender.save();
           await recipient.save();
 
-          // Post success message with amount (reply to original tweet)
-          // Format: "@recipient say from @sender [message]"
-          await postTweet(`@${recipientUsername} say from @${senderUsername} A ${parsed.amount} ${parsed.token} tip has been sent to your wallet! Tx: https://solscan.io/tx/${sig}`, t.id);
+          // Post success message with Solscan link - transfer succeeded
+          // Recipient wallet was generated and SOL was transferred immediately (even if recipient hasn't signed up yet)
+          // When recipient signs up, they'll see the SOL already in their wallet
+          // Format: "@recipient pay from @sender A X SOL tip has been sent to your wallet! You will see it when you create an account on pourboire.tips. Tx: https://solscan.io/tx/..."
+          await postTweet(`@${recipientUsername} pay from @${senderUsername} A ${parsed.amount} ${parsed.token} tip has been sent to your wallet! You will see it when you create an account on pourboire.tips. Tx: https://solscan.io/tx/${sig}`, t.id);
           
         } catch (e: any) {
           console.error('Failed to send tip on-chain:', e);
-          // Fall through to pending claim message
-          // For failed transactions, we still want to record it and show dashboard link
-          // We can't provide a Solscan link until the tip is claimed
-          const dashboardLink = recipientExists 
-            ? `https://pourboire.tips/dashboard?claim=${encodeURIComponent(t.id)}`
-            : `https://pourboire.tips/dashboard`;
-          const message = recipientExists 
-            ? `@${recipientUsername} say from @${senderUsername} A ${parsed.amount} ${parsed.token} tip has been recorded for you! Claim it to receive the Solscan link: ${dashboardLink}`
-            : `@${recipientUsername} say from @${senderUsername} A ${parsed.amount} ${parsed.token} tip has been recorded for you! Sign up to claim and receive the Solscan link: ${dashboardLink}`;
+          // Transfer failed - record as pending claim, no Solscan link yet
+          if (recipient) {
+            const existingClaim = recipient.pendingClaims.find(
+              (p: any) => p.fromTx === t.id && p.sender === senderHandle
+            );
+            if (!existingClaim) {
+              recipient.pendingClaims.push({
+                amount: parsed.amount,
+                token: parsed.token,
+                fromTx: t.id,
+                sender: senderHandle
+              });
+              await recipient.save();
+            }
+          }
+          const message = `@${recipientUsername} pay from @${senderUsername} A ${parsed.amount} ${parsed.token} tip has been recorded for you! Claim it to receive the Solscan link:`;
           await postTweet(message, t.id);
         }
       } else {
-        // Not both registered - record as pending claim
-        // Create dashboard link with claim reference
-        const dashboardLink = recipientExists 
-          ? `https://pourboire.tips/dashboard?claim=${encodeURIComponent(t.id)}`
-          : `https://pourboire.tips/dashboard`;
-        const message = recipientExists 
-          ? `@${recipientUsername} say from @${senderUsername} A ${parsed.amount} ${parsed.token} tip has been recorded for you! Claim it to receive the Solscan link: ${dashboardLink}`
-          : `@${recipientUsername} say from @${senderUsername} A ${parsed.amount} ${parsed.token} tip has been recorded for you! Sign up to claim and receive the Solscan link: ${dashboardLink}`;
+        // Sender not registered - can't transfer yet (no sender wallet)
+        // Generate recipient wallet and record pending claim
+        // When sender signs up, they can then send the tip
+        if (recipient) {
+          const existingClaim = recipient.pendingClaims.find(
+            (p: any) => p.fromTx === t.id && p.sender === senderHandle
+          );
+          if (!existingClaim) {
+            recipient.pendingClaims.push({
+              amount: parsed.amount,
+              token: parsed.token,
+              fromTx: t.id,
+              sender: senderHandle
+            });
+            await recipient.save();
+          }
+        }
+        // Format: "@recipient pay from @sender A X SOL tip has been recorded for you! Claim it to receive the Solscan link:"
+        const message = `@${recipientUsername} pay from @${senderUsername} A ${parsed.amount} ${parsed.token} tip has been recorded for you! Claim it to receive the Solscan link:`;
         await postTweet(message, t.id);
       }
 
