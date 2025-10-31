@@ -97,7 +97,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Create and send transaction with retry logic for expired blockhash
-    let sig: string;
+    let sig: string | null = null;
     let lastError: any;
     const maxRetries = 3;
     
@@ -109,7 +109,7 @@ export async function POST(req: NextRequest) {
         // Create transaction
         const tx = new Transaction({
           feePayer: walletKeypair.publicKey,
-          recentBlockhash: blockhashData.blockhash,
+          blockhash: blockhashData.blockhash,
           lastValidBlockHeight: blockhashData.lastValidBlockHeight
         }).add(
           SystemProgram.transfer({
@@ -167,9 +167,9 @@ export async function POST(req: NextRequest) {
       }
     }
     
-    // If all retries failed
-    if (lastError) {
-      const errorMsg = lastError?.message || String(lastError);
+    // If all retries failed or sig is null
+    if (!sig || lastError) {
+      const errorMsg = lastError?.message || String(lastError) || 'Transaction failed to send';
       console.error('Failed after all retries:', errorMsg);
       return NextResponse.json({ 
         error: 'Failed to create or send transaction after retries', 
